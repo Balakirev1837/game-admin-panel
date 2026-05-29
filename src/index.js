@@ -35,6 +35,24 @@ app.post('/api/containers/:id/stop', async (req, res) => {
   }
 });
 
+// Start a Docker container
+app.post('/api/containers/:id/start', async (req, res) => {
+  const { id } = req.params;
+  if (!docker) {
+    return res.status(503).json({ success: false, message: 'Docker client is not available' });
+  }
+  try {
+    const container = docker.getContainer(id);
+    await container.start();
+    return res.status(200).json({ success: true, message: 'Container started' });
+  } catch (err) {
+    if (err.statusCode === 404) {
+      return res.status(404).json({ success: false, message: 'Container not found' });
+    }
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 if (require.main === module) {
   verifyDockerConnection().then(() => {
     app.listen(PORT, () => {
