@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "game_admin_panel",
+  "project_id": "8d6156bf-dac1-4b07-a126-5de1217729d0"
+}
