@@ -13,7 +13,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "dockerode": "^5.0.0",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "srcds-rcon": "^2.2.1"
   },
   "devDependencies": {
     "jest": "^30.4.2",
