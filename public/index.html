@@ -34,6 +34,30 @@
       <p class="text-gray-500 text-lg">No servers found.</p>
     </div>
   </main>
+
+  <!-- Toast notification container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+  <!-- Config Editor Modal -->
+  <div id="config-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black bg-opacity-60" id="config-modal-backdrop"></div>
+    <div class="relative bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-2xl max-h-[90vh] flex flex-col mx-4">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <h2 id="config-modal-title" class="text-xl font-semibold text-white">Server Config</h2>
+        <button id="config-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div id="config-modal-body" class="overflow-y-auto px-6 py-4 flex-1">
+        <!-- Config form fields rendered here -->
+      </div>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
+        <button id="config-modal-cancel" class="px-4 py-2 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition">Cancel</button>
+        <button id="config-modal-save" class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition font-medium">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
+
   <script src="app.js"></script>
 </body>
 </html>
