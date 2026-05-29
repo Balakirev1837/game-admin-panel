@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { docker, verifyDockerConnection } = require('./services/docker');
 const containersRouter = require('./routes/containers');
+const configRouter = require('./routes/config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,9 @@ app.get('/health', (_req, res) => {
 
 // Mount container routes
 app.use('/api/containers', containersRouter);
+
+// Mount config routes
+app.use('/api/containers', configRouter);
 
 // Stop a Docker container
 app.post('/api/containers/:id/stop', async (req, res) => {
