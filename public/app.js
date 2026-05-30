@@ -332,7 +332,7 @@ function renderContainerCard(container) {
         <button class="rcon-toggle-btn px-3 py-1 text-xs font-medium rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="Open RCON Console">
           RCON
         </button>
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white ${badgeColor}">
+        <span class="state-badge inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white ${badgeColor}">
           ${container.state}
         </span>
       </div>
@@ -340,7 +340,7 @@ function renderContainerCard(container) {
     <div class="text-sm text-gray-400">
       <span class="font-medium text-gray-300">Image:</span> ${container.image}
     </div>
-    <div class="text-sm text-gray-400">
+    <div class="container-status text-sm text-gray-400">
       <span class="font-medium text-gray-300">Status:</span> ${container.status}
     </div>
     <div class="text-sm text-gray-400">
@@ -454,9 +454,9 @@ function renderContainerCard(container) {
 }
 
 function renderContainers(containers) {
-  serverList.innerHTML = '';
-
   if (containers.length === 0) {
+    serverList.innerHTML = '';
+    Object.keys(rconSessions).forEach(k => { rconSessions[k].open = false; });
     loadingEl.classList.add('hidden');
     errorEl.classList.add('hidden');
     emptyEl.classList.remove('hidden');
@@ -467,12 +467,78 @@ function renderContainers(containers) {
   errorEl.classList.add('hidden');
   emptyEl.classList.add('hidden');
 
-  containers.forEach((container) => {
-    serverList.appendChild(renderContainerCard(container));
-    if (container.state === 'running') {
-      fetchResources(container.id);
+  const existingIds = new Set(
+    Array.from(serverList.querySelectorAll('[data-container-id]')).map(el => el.dataset.containerId)
+  );
+  const incomingIds = new Set(containers.map(c => c.id));
+
+  // Remove cards for containers that no longer exist
+  serverList.querySelectorAll('[data-container-id]').forEach(card => {
+    if (!incomingIds.has(card.dataset.containerId)) {
+      // Clean up RCON session
+      delete rconSessions[card.dataset.containerId];
+      card.remove();
     }
   });
+
+  // Add new cards or update existing ones
+  containers.forEach((container) => {
+    if (existingIds.has(container.id)) {
+      updateCard(container);
+    } else {
+      const card = renderContainerCard(container);
+      serverList.appendChild(card);
+      if (container.state === 'running') {
+        fetchResources(container.id);
+      }
+    }
+  });
+}
+
+function updateCard(container) {
+  const card = document.querySelector(`[data-container-id="${container.id}"]`);
+  if (!card) return;
+
+  // Update status badge
+  const badge = card.querySelector('.state-badge');
+  if (badge) {
+    const badgeColor = statusColor(container.state);
+    badge.className = `state-badge inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white ${badgeColor}`;
+    badge.textContent = container.state;
+  }
+
+  // Update start/stop button states
+  const startBtn = card.querySelector('.start-btn');
+  const stopBtn = card.querySelector('.stop-btn');
+  if (startBtn) {
+    startBtn.disabled = container.state === 'running';
+    startBtn.classList.toggle('opacity-50', container.state === 'running');
+    startBtn.classList.toggle('cursor-not-allowed', container.state === 'running');
+    if (container.state !== 'running') startBtn.textContent = 'Start';
+  }
+  if (stopBtn) {
+    stopBtn.disabled = container.state !== 'running';
+    stopBtn.classList.toggle('opacity-50', container.state !== 'running');
+    stopBtn.classList.toggle('cursor-not-allowed', container.state !== 'running');
+    if (container.state === 'running') stopBtn.textContent = 'Stop';
+  }
+
+  // Update status text
+  const statusEl = card.querySelector('.container-status');
+  if (statusEl) {
+    statusEl.innerHTML = `<span class="font-medium text-gray-300">Status:</span> ${container.status}`;
+  }
+
+  // Show/hide resources section
+  const resContainer = card.querySelector('.resources-container');
+  if (resContainer) {
+    if (container.state === 'running') {
+      resContainer.classList.remove('hidden');
+      fetchResources(container.id);
+    } else {
+      resContainer.classList.add('hidden');
+    }
+  }
 }
 
 function showError(msg) {
@@ -515,31 +581,51 @@ function renderResources(containerId, resources) {
   const cpu = resources.cpu || {};
   const net = resources.network || {};
 
-  resEl.innerHTML = `
-    <div class="mt-2 pt-2 border-t border-gray-700 text-xs space-y-1.5">
-      <div>
-        <div class="flex justify-between text-gray-400 mb-0.5">
-          <span>Memory</span>
-          <span>${mem.usage_human || '—'} / ${mem.limit_human || '—'} (${(mem.percent || 0).toFixed(1)}%)</span>
+  // Only full render on first load (replaces spinner)
+  if (!resEl.dataset.loaded) {
+    resEl.dataset.loaded = '1';
+    resEl.innerHTML = `
+      <div class="mt-2 pt-2 border-t border-gray-700 text-xs space-y-1.5">
+        <div>
+          <div class="flex justify-between text-gray-400 mb-0.5">
+            <span>Memory</span>
+            <span class="res-mem-label">—</span>
+          </div>
+          <div class="w-full bg-gray-700 rounded-full h-1.5">
+            <div class="res-mem-bar bg-green-500 h-1.5 rounded-full transition-all duration-700" style="width:0%"></div>
+          </div>
         </div>
-        <div class="w-full bg-gray-700 rounded-full h-1.5">
-          <div class="${memoryBarColor(mem.percent || 0)} h-1.5 rounded-full transition-all duration-500" style="width:${Math.min(mem.percent || 0, 100)}%"></div>
+        <div class="flex justify-between text-gray-400">
+          <span>CPU</span>
+          <span class="res-cpu-label">—</span>
+        </div>
+        <div class="flex justify-between text-gray-400">
+          <span>Network Rx</span>
+          <span class="res-netrx-label">—</span>
+        </div>
+        <div class="flex justify-between text-gray-400">
+          <span>Network Tx</span>
+          <span class="res-nettx-label">—</span>
         </div>
       </div>
-      <div class="flex justify-between text-gray-400">
-        <span>CPU</span>
-        <span>${(cpu.percent || 0).toFixed(1)}%</span>
-      </div>
-      <div class="flex justify-between text-gray-400">
-        <span>Network Rx</span>
-        <span>${net.rx_human || '—'}</span>
-      </div>
-      <div class="flex justify-between text-gray-400">
-        <span>Network Tx</span>
-        <span>${net.tx_human || '—'}</span>
-      </div>
-    </div>
-  `;
+    `;
+  }
+
+  // Patch values in-place — no flicker
+  const memLabel = resEl.querySelector('.res-mem-label');
+  const memBar = resEl.querySelector('.res-mem-bar');
+  const cpuLabel = resEl.querySelector('.res-cpu-label');
+  const netrxLabel = resEl.querySelector('.res-netrx-label');
+  const nettxLabel = resEl.querySelector('.res-nettx-label');
+
+  if (memLabel) memLabel.textContent = `${mem.usage_human || '—'} / ${mem.limit_human || '—'} (${(mem.percent || 0).toFixed(1)}%)`;
+  if (memBar) {
+    memBar.style.width = `${Math.min(mem.percent || 0, 100)}%`;
+    memBar.className = `res-mem-bar ${memoryBarColor(mem.percent || 0)} h-1.5 rounded-full transition-all duration-700`;
+  }
+  if (cpuLabel) cpuLabel.textContent = `${(cpu.percent || 0).toFixed(1)}%`;
+  if (netrxLabel) netrxLabel.textContent = net.rx_human || '—';
+  if (nettxLabel) nettxLabel.textContent = net.tx_human || '—';
 }
 
 function renderResourcesError(containerId) {
@@ -548,11 +634,14 @@ function renderResourcesError(containerId) {
   const resEl = container.querySelector('.resources-container');
   if (!resEl) return;
 
-  resEl.innerHTML = `
-    <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">
-      Resources unavailable
-    </div>
-  `;
+  if (!resEl.dataset.loaded) {
+    resEl.dataset.loaded = '1';
+    resEl.innerHTML = `
+      <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">
+        Resources unavailable
+      </div>
+    `;
+  }
 }
 
 async function fetchResources(containerId) {
