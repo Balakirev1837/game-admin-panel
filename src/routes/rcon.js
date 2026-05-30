@@ -39,37 +39,47 @@ router.post('/:id/rcon', async (req, res) => {
   const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
   const DEFAULT_RCON_PORT = 25575;
 
-  // Resolve host: use container's name on game-network, fallback to 127.0.0.1
-  let rconHost = info.Name ? info.Name.replace(/^\//, '') : '127.0.0.1';
+  // Resolve host: prefer game-network IP, but for host-mode containers
+  // fall back to 127.0.0.1 (container binds directly to host interfaces)
+  let rconHost = '127.0.0.1';
   let rconPort = null;
   let foundPort = false;
 
-  // Check game-network IPs first
   const networks = (info.NetworkSettings && info.NetworkSettings.Networks) || {};
   const gameNet = networks['game-network'];
   if (gameNet && gameNet.IPAddress) {
     rconHost = gameNet.IPAddress;
   }
 
-  // Try to find the default RCON port mapping first
-  const rconPortKey = `${DEFAULT_RCON_PORT}/tcp`;
-  if (ports[rconPortKey] && ports[rconPortKey].length > 0) {
-    const binding = ports[rconPortKey][0];
-    rconPort = parseInt(binding.HostPort, 10);
-    foundPort = true;
-  }
-
-  // If default port not found, look for game port 17777 (Icarus RCON)
-  if (!foundPort) {
-    for (const [containerPort, bindings] of Object.entries(ports)) {
-      if (bindings && bindings.length > 0) {
-        const privatePort = parseInt(containerPort.split('/')[0], 10);
-        if (privatePort === DEFAULT_RCON_PORT || privatePort === 17777) {
-          rconPort = privatePort;
-          foundPort = true;
-          break;
+  // Try to find port mappings from Docker (works for bridge-mode containers)
+  if (ports && Object.keys(ports).length > 0) {
+    const rconPortKey = `${DEFAULT_RCON_PORT}/tcp`;
+    if (ports[rconPortKey] && ports[rconPortKey].length > 0) {
+      rconPort = parseInt(ports[rconPortKey][0].HostPort, 10);
+      foundPort = true;
+    }
+    if (!foundPort) {
+      for (const [containerPort, bindings] of Object.entries(ports)) {
+        if (bindings && bindings.length > 0) {
+          const privatePort = parseInt(containerPort.split('/')[0], 10);
+          if (privatePort === DEFAULT_RCON_PORT || privatePort === 17777) {
+            rconPort = privatePort;
+            foundPort = true;
+            break;
+          }
         }
       }
+    }
+  }
+
+  // Host-mode fallback: no port bindings in inspect — use container env vars
+  if (!foundPort) {
+    const envServerPort = (info.Config && info.Config.Env)
+      ? info.Config.Env.find(e => e.startsWith('SERVER_PORT='))
+      : null;
+    if (envServerPort) {
+      rconPort = parseInt(envServerPort.split('=')[1], 10);
+      foundPort = true;
     }
   }
 

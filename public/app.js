@@ -12,20 +12,72 @@ const configModalBackdrop = document.getElementById('config-modal-backdrop');
 const configModalCancel = document.getElementById('config-modal-cancel');
 const configModalSave = document.getElementById('config-modal-save');
 
+// --- Icarus Prospect Type data ---
+// From https://github.com/RocketWerkz/IcarusDedicatedServer/wiki/Prospect-Names
+const PROSPECT_TYPES = [
+  { key: 'Tier1_Forest_Recon_0', name: 'BEACHHEAD: Recon (T1 Forest)' },
+  { key: 'Tier1_Forest_Exploration_0', name: 'ARGOS: Exploration (T1 Forest)' },
+  { key: 'Tier1_Forest_Extermination_0', name: 'KILL LIST: Extermination (T1 Forest)' },
+  { key: 'Tier1_Forest_Construction', name: 'HOMESTEAD: Construction (T1 Forest)' },
+  { key: 'Tier1_Forest_Scan_0', name: 'LIVEWIRE: Terrain Scan (T1 Forest)' },
+  { key: 'Tier1_Forest_Research_0', name: 'STRANGE HARVEST: Bio-Research (T1 Forest)' },
+  { key: 'Tier1_Forest_Survey_0', name: 'HEADSTONE: Geo-Survey (T1 Forest)' },
+  { key: 'Tier1_Forest_Stockpile', name: 'AGRICULTURE: Supply Stockpile (T1 Forest)' },
+  { key: 'Tier1_Forest_Range', name: 'POTSHOT: Training (T1 Forest)' },
+  { key: 'Tier1_Forest_Defence', name: 'FORSAKEN: Recovery (T1 Forest)' },
+  { key: 'Tier1_Forest_WS_Stockpile', name: 'SPELUNKING: Assisted Stockpile (T1 Forest)' },
+  { key: 'Tier2_Canyon_Expedition_0', name: 'DRY RUN: Expedition (T2 Canyon)' },
+  { key: 'Tier2_Canyon_Exploration_0', name: 'SANDBLAST: Exploration (T2 Canyon)' },
+  { key: 'Tier2_Canyon_Scan_0', name: 'DEATH RAY: Scan (T2 Canyon)' },
+  { key: 'Tier2_Canyon_Research_0', name: 'BIOSHOCK: Bio-Research (T2 Canyon)' },
+  { key: 'Tier2_Canyon_Construction_0', name: 'PYRAMID: Construction (T2 Canyon)' },
+  { key: 'Tier3_RiverLands_Exploration_0', name: 'EDELWEISS: Exploration (T3 River Lands)' },
+  { key: 'Tier3_RiverLands_Extermination_0', name: 'WET WORK: Extermination (T3 River Lands)' },
+  { key: 'Tier3_RiverLands_Expedition_0', name: 'WATERFALL: Expedition (T3 River Lands)' },
+  { key: 'Tier3_RiverLands_Extraction', name: 'MERIDIAN: Extraction (T3 River Lands)' },
+  { key: 'Tier3_RiverLands_Research_0', name: 'UPLIFT: Bio-Research (T3 River Lands)' },
+  { key: 'Tier4_Desert_Exploration_0', name: 'PROMISED LAND: Exploration (T4 Desert)' },
+  { key: 'Tier4_Desert_Extermination_0', name: 'DUST UP: Extermination (T4 Desert)' },
+  { key: 'Tier4_Desert_Construction_0', name: 'SANDBOX: Construction (T4 Desert)' },
+  { key: 'Tier4_Arctic_Exploration_0', name: 'TUNDRA: Exploration (T4 Arctic)' },
+  { key: 'Tier4_Arctic_Extraction_0', name: 'PAYDAY: Extraction (T4 Arctic)' },
+  { key: 'OpenWorld_Styx', name: 'Styx (Open World)' },
+  { key: 'Outpost002_Forest', name: 'ARCWOOD: Outpost' },
+  { key: 'Outpost003_Arctic', name: 'ICEHOLM: Outpost' },
+  { key: 'Outpost005_Forest', name: 'HOLDFAST: Outpost' },
+  { key: 'Outpost006_Olympus', name: 'Olympus' },
+  { key: 'STYX_A_Exploration', name: 'HEADLONG: Exploration (Styx)' },
+  { key: 'STYX_A_Expedition', name: 'OMPHALOS: Expedition (Styx)' },
+];
+
 // --- Known Icarus config field definitions ---
-// Maps flat config keys to friendly labels, types, and options.
-// These are rendered as form fields in the editor.
+// Matches ServerSettings.ini documented at:
+// https://github.com/RocketWerkz/IcarusDedicatedServer/wiki/Server-Config-&-Launch-Parameters
 const CONFIG_FIELDS = [
-  { key: 'ServerName', label: 'Server Name', type: 'text', section: null, placeholder: 'My Icarus Server' },
-  { key: 'MaxPlayers', label: 'Max Players', type: 'number', section: null, placeholder: '8', min: '1', max: '128' },
-  { key: 'Password', label: 'Server Password', type: 'text', section: null, placeholder: '' },
-  { key: 'ServerPassword', label: 'Server Password', type: 'text', section: '/Game/Settings', placeholder: '' },
-  { key: 'ServerName', label: 'Server Name', type: 'text', section: '/Game/Settings', placeholder: 'My Icarus Server' },
-  { key: 'MaxPlayers', label: 'Max Players', type: 'number', section: '/Game/Settings', placeholder: '8', min: '1', max: '128' },
-  { key: 'MissionName', label: 'Mission / Scenario', type: 'text', section: '/Game/Settings', placeholder: '' },
-  { key: 'Map', label: 'Map', type: 'select', section: '/Game/Settings', options: ['', 'Forest', 'Desert', 'Prometheus'] },
-  { key: 'Difficulty', label: 'Difficulty', type: 'select', section: '/Script/Icarus.Settings', options: ['', 'Normal', 'Hard', 'Custom'] },
-  { key: 'bEnabled', label: 'Enabled', type: 'select', section: '/Script/Icarus.Settings', options: ['', 'True', 'False'] },
+  { key: 'SessionName', label: 'Server Name', type: 'text', section: null, placeholder: 'ICARUS Server',
+    help: 'Shown in the server browser. (deprecated — use SteamServerName instead)' },
+  { key: 'JoinPassword', label: 'Join Password', type: 'text', section: null, placeholder: '',
+    help: 'Password required to join. Leave empty for no password.' },
+  { key: 'MaxPlayers', label: 'Max Players', type: 'number', section: null, placeholder: '8', min: '1', max: '8',
+    help: 'Maximum players on the server (1-8).' },
+  { key: 'AdminPassword', label: 'Admin Password', type: 'text', section: null, placeholder: '',
+    help: 'Password for admin RCON commands. Empty = no password needed for admin.' },
+  { key: 'ResumeProspect', label: 'Resume Last Prospect', type: 'select', section: null, options: ['True', 'False'],
+    help: 'Automatically resume the last prospect on startup.' },
+  { key: 'LastProspectName', label: 'Last Prospect Name', type: 'text', section: null, placeholder: '',
+    help: 'The last prospect that was run. Used by ResumeProspect.' },
+  { key: 'LoadProspect', label: 'Load Prospect On Startup', type: 'text', section: null, placeholder: '',
+    help: 'Prospect name to load on startup (without .json). Empty = wait in lobby.' },
+  { key: 'CreateProspect', label: 'Create Prospect On Startup', type: 'text', section: null, placeholder: '',
+    help: 'ProspectType Difficulty Hardcore SaveName. e.g. Tier1_Forest_Recon_0 3 false TestProspect01' },
+  { key: 'ShutdownIfNotJoinedFor', label: 'Shutdown If Not Joined (sec)', type: 'number', section: null, placeholder: '300', min: '-1',
+    help: 'Shutdown if nobody joins within N seconds. -1 = never, 0 = immediately.' },
+  { key: 'ShutdownIfEmptyFor', label: 'Shutdown If Empty (sec)', type: 'number', section: null, placeholder: '300', min: '-1',
+    help: 'Shutdown after server becomes empty for N seconds. -1 = never, 0 = immediately.' },
+  { key: 'AllowNonAdminsToLaunchProspects', label: 'Non-Admins Can Launch', type: 'select', section: null, options: ['True', 'False'],
+    help: 'Allow non-admin players to create or load prospects from the lobby.' },
+  { key: 'AllowNonAdminsToDeleteProspects', label: 'Non-Admins Can Delete', type: 'select', section: null, options: ['True', 'False'],
+    help: 'Allow non-admin players to delete prospects from the server.' },
 ];
 
 // Track the current container being edited
@@ -145,21 +197,30 @@ function createRconPanel(containerId) {
   // Quick commands
   const quickRow = document.createElement('div');
   quickRow.className = 'flex flex-wrap gap-2 mt-1';
-  
+
   const quickCommands = [
-    { label: 'Resume Prospect', cmd: 'ResumeProspect', immediate: true },
-    { label: 'Load Prospect...', cmd: 'LoadProspect ' },
-    { label: 'Create Prospect...', cmd: 'CreateProspect ' },
-    { label: 'Save', cmd: 'Server.Save', immediate: true },
-    { label: 'Shutdown', cmd: 'Shutdown', immediate: true }
+    { label: 'Admin Login...', cmd: 'AdminLogin ', help: 'Gain admin privileges' },
+    { label: 'Resume Prospect', cmd: 'ResumeProspect', immediate: true, help: 'Resume the last prospect' },
+    { label: 'Load Prospect...', cmd: 'LoadProspect ', help: 'Load prospect by name' },
+    { label: 'Create Prospect', cmd: '__MODAL__', immediate: true, modal: 'prospect', help: 'Open prospect creation form' },
+    { label: 'Kick Player...', cmd: 'KickPlayer ', help: 'KickPlayer SteamId Reason' },
+    { label: 'Ban Player...', cmd: 'BanPlayer ', help: 'BanPlayer SteamId Reason' },
+    { label: 'Unban Player...', cmd: 'UnbanPlayer ', help: 'UnbanPlayer SteamId' },
+    { label: 'Return to Lobby', cmd: 'ReturnToLobby', immediate: true, help: 'Kick all players, return to lobby' },
+    { label: 'Lobby When Empty', cmd: 'ReturnToLobbyWhenEmpty', immediate: true, help: 'Return to lobby as soon as server is empty' },
+    { label: 'Admin Say...', cmd: 'AdminSay ', help: 'Broadcast message to all players' }
   ];
 
   quickCommands.forEach(qc => {
     const btn = document.createElement('button');
     btn.className = 'px-2 py-1 bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded text-xs text-gray-300 transition-colors';
     btn.textContent = qc.label;
+    if (qc.help) btn.title = qc.help;
+    if (qc.modal === 'prospect') btn.classList.add('create-prospect-btn');
     btn.addEventListener('click', () => {
-      if (qc.immediate) {
+      if (qc.modal === 'prospect') {
+        openProspectModal(containerId);
+      } else if (qc.immediate) {
         sendRconCommand(containerId, qc.cmd, output, session);
       } else {
         input.value = qc.cmd;
@@ -266,6 +327,8 @@ function renderContainerCard(container) {
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold text-white">${container.name}</h2>
       <div class="flex items-center gap-2">
+        <button class="start-btn px-3 py-1 text-xs font-medium rounded bg-green-700 hover:bg-green-600 text-white transition-colors ${container.state === 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state === 'running' ? 'disabled' : ''}>Start</button>
+        <button class="stop-btn px-3 py-1 text-xs font-medium rounded bg-red-700 hover:bg-red-600 text-white transition-colors ${container.state !== 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state !== 'running' ? 'disabled' : ''}>Stop</button>
         <button class="rcon-toggle-btn px-3 py-1 text-xs font-medium rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="Open RCON Console">
           RCON
         </button>
@@ -287,6 +350,20 @@ function renderContainerCard(container) {
       <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
         Server Config
       </button>
+      <button class="prospects-btn px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}">
+        Prospects
+      </button>
+    </div>
+    <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
+      <div class="mt-2 pt-2 border-t border-gray-700">
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <span>Loading resources...</span>
+        </div>
+      </div>
     </div>
     <div class="rcon-container"></div>
   `;
@@ -294,6 +371,53 @@ function renderContainerCard(container) {
   // Attach event listener for config button
   card.querySelector('.config-btn').addEventListener('click', function () {
     openConfigEditor(this.dataset.containerId, this.dataset.containerName, this.dataset.containerState);
+  });
+
+  // Attach event listener for prospects button
+  card.querySelector('.prospects-btn').addEventListener('click', function () {
+    openProspectsModal(this.dataset.containerId, this.dataset.containerName);
+  });
+
+  // Start button
+  card.querySelector('.start-btn').addEventListener('click', async function () {
+    this.disabled = true;
+    this.textContent = '...';
+    try {
+      const res = await fetch(`${API_BASE}/${container.id}/start`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${container.name} started`, 'success');
+      } else {
+        showToast(data.message || 'Start failed', 'error');
+        this.disabled = false;
+        this.textContent = 'Start';
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+      this.disabled = false;
+      this.textContent = 'Start';
+    }
+  });
+
+  // Stop button
+  card.querySelector('.stop-btn').addEventListener('click', async function () {
+    this.disabled = true;
+    this.textContent = '...';
+    try {
+      const res = await fetch(`${API_BASE}/${container.id}/stop`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${container.name} stopped`, 'success');
+      } else {
+        showToast(data.message || 'Stop failed', 'error');
+        this.disabled = false;
+        this.textContent = 'Stop';
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+      this.disabled = false;
+      this.textContent = 'Stop';
+    }
   });
 
   // Wire up RCON toggle button
@@ -345,6 +469,9 @@ function renderContainers(containers) {
 
   containers.forEach((container) => {
     serverList.appendChild(renderContainerCard(container));
+    if (container.state === 'running') {
+      fetchResources(container.id);
+    }
   });
 }
 
@@ -368,6 +495,81 @@ async function fetchContainers() {
   } catch (err) {
     showError(err.message);
   }
+}
+
+// ===================== Resource Monitor =====================
+
+function memoryBarColor(percent) {
+  if (percent > 80) return 'bg-red-500';
+  if (percent > 60) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
+function renderResources(containerId, resources) {
+  const container = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (!container) return;
+  const resEl = container.querySelector('.resources-container');
+  if (!resEl) return;
+
+  const mem = resources.memory || {};
+  const cpu = resources.cpu || {};
+  const net = resources.network || {};
+
+  resEl.innerHTML = `
+    <div class="mt-2 pt-2 border-t border-gray-700 text-xs space-y-1.5">
+      <div>
+        <div class="flex justify-between text-gray-400 mb-0.5">
+          <span>Memory</span>
+          <span>${mem.usage_human || '—'} / ${mem.limit_human || '—'} (${(mem.percent || 0).toFixed(1)}%)</span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-1.5">
+          <div class="${memoryBarColor(mem.percent || 0)} h-1.5 rounded-full transition-all duration-500" style="width:${Math.min(mem.percent || 0, 100)}%"></div>
+        </div>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>CPU</span>
+        <span>${(cpu.percent || 0).toFixed(1)}%</span>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>Network Rx</span>
+        <span>${net.rx_human || '—'}</span>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>Network Tx</span>
+        <span>${net.tx_human || '—'}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderResourcesError(containerId) {
+  const container = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (!container) return;
+  const resEl = container.querySelector('.resources-container');
+  if (!resEl) return;
+
+  resEl.innerHTML = `
+    <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">
+      Resources unavailable
+    </div>
+  `;
+}
+
+async function fetchResources(containerId) {
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/resources`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderResources(containerId, data);
+  } catch {
+    renderResourcesError(containerId);
+  }
+}
+
+function fetchAllResources() {
+  document.querySelectorAll('[data-container-id]').forEach(card => {
+    fetchResources(card.dataset.containerId);
+  });
 }
 
 // ===================== Config Editor =====================
@@ -519,7 +721,7 @@ function renderFormField(field, value) {
 
   return `
     <div class="mb-3">
-      <label for="${inputId}" class="block text-sm font-medium text-gray-300 mb-1">${field.label}</label>
+      <label for="${inputId}" class="block text-sm font-medium text-gray-300 mb-1">${field.label}${field.help ? `<span class="block text-xs font-normal text-gray-500 mt-0.5">${field.help}</span>` : ''}</label>
       ${inputHtml}
     </div>
   `;
@@ -663,10 +865,306 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !configModal.classList.contains('hidden')) {
     closeConfigEditor();
   }
+  if (e.key === 'Escape' && !prospectModal.classList.contains('hidden')) {
+    closeProspectModal();
+  }
+  if (e.key === 'Escape' && !prospectsModal.classList.contains('hidden')) {
+    closeProspectsModal();
+  }
 });
+
+// ===================== Create Prospect Modal =====================
+
+const prospectModal = document.getElementById('prospect-modal');
+const prospectModalClose = document.getElementById('prospect-modal-close');
+const prospectModalBackdrop = document.getElementById('prospect-modal-backdrop');
+const prospectModalCancel = document.getElementById('prospect-modal-cancel');
+const prospectModalSend = document.getElementById('prospect-modal-send');
+const prospectTypeEl = document.getElementById('prospect-type');
+const prospectDifficultyEl = document.getElementById('prospect-difficulty');
+const prospectHardcoreEl = document.getElementById('prospect-hardcore');
+const prospectSavenameEl = document.getElementById('prospect-savename');
+let prospectContainerId = null;
+
+function populateProspectTypes() {
+  prospectTypeEl.innerHTML = PROSPECT_TYPES.map(pt =>
+    `<option value="${pt.key}">${pt.name}</option>`
+  ).join('');
+}
+
+function openProspectModal(containerId) {
+  prospectContainerId = containerId;
+  populateProspectTypes();
+  prospectModal.classList.remove('hidden');
+}
+
+function closeProspectModal() {
+  prospectModal.classList.add('hidden');
+  prospectContainerId = null;
+}
+
+function sendProspectCommand() {
+  if (!prospectContainerId) return;
+  const type = prospectTypeEl.value;
+  const difficulty = prospectDifficultyEl.value;
+  const hardcore = prospectHardcoreEl.value;
+  const savename = prospectSavenameEl.value.trim();
+  const cmd = `CreateProspect ${type} ${difficulty} ${hardcore}${savename ? ' ' + savename : ''}`;
+
+  const session = getRconSession(prospectContainerId);
+  if (!session.open) {
+    showToast('Open the RCON console first for this server', 'error');
+    closeProspectModal();
+    return;
+  }
+
+  const panel = document.querySelector(`[data-container-id="${prospectContainerId}"] .rcon-panel`);
+  const output = panel ? panel.querySelector('div:first-child') : null;
+  if (output) {
+    sendRconCommand(prospectContainerId, cmd, output, session);
+  }
+  closeProspectModal();
+}
+
+// Update the "Create Prospect" quick button to open the modal instead
+function makeQuickCreateButton(containerId) {
+  const rconContainer = document.querySelector(`[data-container-id="${containerId}"] .rcon-container`);
+  if (!rconContainer) return;
+  const panel = rconContainer.querySelector('.rcon-panel');
+  if (!panel) return;
+  const rows = panel.querySelectorAll('div > div');
+  const quickRow = panel.querySelector('div.flex.flex-wrap');
+  if (!quickRow) return;
+
+  const createBtn = quickRow.querySelector('.create-prospect-btn');
+  if (createBtn) {
+    createBtn.onclick = () => openProspectModal(containerId);
+  }
+}
+
+prospectModalClose.addEventListener('click', closeProspectModal);
+prospectModalBackdrop.addEventListener('click', closeProspectModal);
+prospectModalCancel.addEventListener('click', closeProspectModal);
+prospectModalSend.addEventListener('click', sendProspectCommand);
+
+// ===================== Prospects Upload Modal =====================
+
+const prospectsModal = document.getElementById('prospects-modal');
+const prospectsModalClose = document.getElementById('prospects-modal-close');
+const prospectsModalBackdrop = document.getElementById('prospects-modal-backdrop');
+const prospectsModalCancel = document.getElementById('prospects-modal-cancel');
+const prospectsModalUpload = document.getElementById('prospects-modal-upload');
+const prospectsModalBody = document.getElementById('prospects-modal-body');
+const prospectsModalTitle = document.getElementById('prospects-modal-title');
+let prospectsContainerId = null;
+let prospectsContainerName = null;
+let pendingProspectFile = null;
+let pendingProspectJSON = null;
+
+function closeProspectsModal() {
+  prospectsModal.classList.add('hidden');
+  prospectsContainerId = null;
+  prospectsContainerName = null;
+  pendingProspectFile = null;
+  pendingProspectJSON = null;
+  prospectsModalUpload.disabled = false;
+  prospectsModalUpload.textContent = 'Upload';
+}
+
+function renderProspectsList(prospects) {
+  if (!prospects || prospects.length === 0) {
+    return '<p class="text-gray-500 text-sm">No prospect files on server.</p>';
+  }
+  return `
+    <div class="mb-3">
+      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Server Prospects</h3>
+      <ul class="space-y-1">
+        ${prospects.map(p => `<li class="text-sm text-gray-300 bg-gray-900 rounded px-3 py-1.5 font-mono">${p.name}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function renderUploadArea() {
+  const status = pendingProspectFile
+    ? `Selected: <span class="text-green-400">${pendingProspectFile.name}</span>`
+    : 'Drop a .json prospect file here or click to browse';
+  const statusColor = pendingProspectFile ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-dashed border-gray-500';
+
+  return `
+    <div class="mb-3">
+      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Upload Local Prospect</h3>
+      <div id="prospect-drop-zone" class="border-2 ${statusColor} rounded-lg p-6 text-center cursor-pointer text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors">
+        <p>${status}</p>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">The file is validated client-side before upload to prevent corruption.</p>
+      <div id="prospect-name-area" class="${pendingProspectFile ? '' : 'hidden'} mt-3">
+        <label for="prospect-upload-name" class="block text-sm font-medium text-gray-300 mb-1">Prospect Name</label>
+        <input type="text" id="prospect-upload-name" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+  `;
+}
+
+async function openProspectsModal(containerId, containerName) {
+  prospectsContainerId = containerId;
+  prospectsContainerName = containerName;
+  prospectsModalTitle.textContent = `Prospects — ${containerName}`;
+  prospectsModalUpload.disabled = true;
+  prospectsModalUpload.textContent = 'Upload';
+  pendingProspectFile = null;
+  pendingProspectJSON = null;
+
+  prospectsModalBody.innerHTML = '<div class="flex items-center justify-center py-8"><span class="text-gray-400 text-sm">Loading...</span></div>';
+  prospectsModal.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/prospects`);
+    const data = await res.json();
+    pendingProspectList = Array.isArray(data) ? data : [];
+    prospectsModalBody.innerHTML = renderProspectsList(pendingProspectList) + renderUploadArea();
+    setupDropZone();
+  } catch (err) {
+    pendingProspectList = [];
+    prospectsModalBody.innerHTML = `<p class="text-red-400 text-sm">Failed to load: ${err.message}</p>`;
+  }
+}
+
+function setupDropZone() {
+  const zone = document.getElementById('prospect-drop-zone');
+  if (!zone) return;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+  zone.appendChild(input);
+
+  zone.addEventListener('click', () => input.click());
+
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('border-blue-400', 'text-blue-400');
+  });
+  zone.addEventListener('dragleave', () => {
+    zone.classList.remove('border-blue-400', 'text-blue-400');
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('border-blue-400', 'text-blue-400');
+    if (e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  });
+  input.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+}
+
+function handleFileSelect(file) {
+  if (!file.name.endsWith('.json')) {
+    showToast('Only .json files are accepted', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object') {
+        showToast('File does not contain a valid JSON object — may be corrupted', 'error');
+        return;
+      }
+      pendingProspectFile = file;
+      pendingProspectJSON = parsed;
+
+      const nameFromFile = file.name.replace(/\.json$/i, '');
+      prospectsModalBody.innerHTML = renderProspectsList(pendingProspectList) + renderUploadArea();
+      const nameInput = document.getElementById('prospect-upload-name');
+      if (nameInput) {
+        nameInput.value = nameFromFile;
+      }
+      prospectsModalUpload.disabled = false;
+      setupDropZone();
+      showToast('Prospect file validated successfully', 'success');
+    } catch {
+      showToast('Invalid JSON — file may be corrupted', 'error');
+    }
+  };
+  reader.onerror = () => showToast('Failed to read file', 'error');
+  reader.readAsText(file);
+}
+
+let pendingProspectList = []; // stored from list API
+
+prospectsModalUpload.addEventListener('click', async () => {
+  if (!pendingProspectFile || !pendingProspectJSON || !prospectsContainerId) return;
+
+  const nameInput = document.getElementById('prospect-upload-name');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    showToast('Please enter a prospect name', 'error');
+    return;
+  }
+
+  prospectsModalUpload.disabled = true;
+  prospectsModalUpload.textContent = 'Uploading...';
+
+  try {
+    const res = await fetch(`${API_BASE}/${prospectsContainerId}/prospects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, content: pendingProspectJSON }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      showToast(`Prospect "${name}.json" uploaded successfully!`, 'success');
+
+      // Offer to set LoadProspect in config
+      if (confirm(`Set LoadProspect to "${name}" so the server auto-loads this prospect on startup?`)) {
+        try {
+          const cfgRes = await fetch(`${API_BASE}/${prospectsContainerId}/config`);
+          const cfgData = await cfgRes.json();
+          const config = cfgData.config || {};
+          if (!config._root) config._root = {};
+          config._root.LoadProspect = name;
+          await fetch(`${API_BASE}/${prospectsContainerId}/config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config }),
+          });
+          showToast('LoadProspect set in server config', 'success');
+        } catch {
+          showToast('Prospect uploaded, but failed to update config', 'error');
+        }
+      }
+
+      closeProspectsModal();
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+      prospectsModalUpload.disabled = false;
+      prospectsModalUpload.textContent = 'Upload';
+    }
+  } catch (err) {
+    showToast('Upload failed: ' + err.message, 'error');
+    prospectsModalUpload.disabled = false;
+    prospectsModalUpload.textContent = 'Upload';
+  }
+});
+
+prospectsModalClose.addEventListener('click', closeProspectsModal);
+prospectsModalBackdrop.addEventListener('click', closeProspectsModal);
+prospectsModalCancel.addEventListener('click', closeProspectsModal);
 
 // Initial fetch
 fetchContainers();
 
 // Auto-refresh every 5 seconds
 setInterval(fetchContainers, 5000);
+
+// Auto-refresh resources every 10 seconds
+setInterval(fetchAllResources, 10000);

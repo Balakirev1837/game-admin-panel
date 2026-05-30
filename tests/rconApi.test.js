@@ -80,6 +80,7 @@ describe('POST /api/containers/:id/rcon', () => {
     mockGetContainer.mockReturnValue({ inspect: mockInspect });
     mockInspect.mockResolvedValue({
       State: { Running: true },
+      Config: { Env: [] },
       NetworkSettings: {
         Ports: {
           '80/tcp': [{ HostIp: '0.0.0.0', HostPort: '8080' }],
@@ -176,6 +177,39 @@ describe('POST /api/containers/:id/rcon', () => {
 
     expect(res.status).toBe(200);
     expect(mockSendRconCommand).toHaveBeenCalledWith('127.0.0.1', 25575, undefined, 'status');
+  });
+
+  it('should resolve host-mode containers via SERVER_PORT env var', async () => {
+    mockGetContainer.mockReturnValue({ inspect: mockInspect });
+    mockInspect.mockResolvedValue({
+      State: { Running: true },
+      Config: { Env: ['SERVER_PORT=17777'] },
+      NetworkSettings: { Ports: {} },
+    });
+    mockSendRconCommand.mockResolvedValue('players: 2');
+
+    const res = await request(app)
+      .post('/api/containers/hostmode/rcon')
+      .send({ command: 'list' });
+
+    expect(res.status).toBe(200);
+    expect(mockSendRconCommand).toHaveBeenCalledWith('127.0.0.1', 17777, undefined, 'list');
+  });
+
+  it('should return 503 for host-mode container with no SERVER_PORT env', async () => {
+    mockGetContainer.mockReturnValue({ inspect: mockInspect });
+    mockInspect.mockResolvedValue({
+      State: { Running: true },
+      Config: { Env: ['OTHER_VAR=foo'] },
+      NetworkSettings: { Ports: {} },
+    });
+
+    const res = await request(app)
+      .post('/api/containers/hostmode2/rcon')
+      .send({ command: 'status' });
+
+    expect(res.status).toBe(503);
+    expect(res.body.message).toMatch(/no RCON port/i);
   });
 
   it('should return 500 if Docker inspect fails with non-404 error', async () => {
