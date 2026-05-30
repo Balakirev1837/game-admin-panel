@@ -6,6 +6,7 @@ const { docker, verifyDockerConnection } = require('./services/docker');
 const containersRouter = require('./routes/containers');
 const configRouter = require('./routes/config');
 const rconRouter = require('./routes/rcon');
+const restRouter = require('./routes/rest');
 const prospectsRouter = require('./routes/prospects');
 const resourcesRouter = require('./routes/resources');
 
@@ -39,6 +40,9 @@ app.use('/api/containers', configRouter);
 
 // Mount RCON routes
 app.use('/api/containers', rconRouter);
+
+// Mount REST routes
+app.use('/api/containers', restRouter);
 
 // Mount prospect routes
 app.use('/api/containers', prospectsRouter);

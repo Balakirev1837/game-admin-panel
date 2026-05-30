@@ -103,6 +103,69 @@ function resolveCs2Rcon(info) {
   return { rconHost, rconPort, foundPort, rconPassword };
 }
 
+function resolveMinecraftRcon(info) {
+  const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
+  let rconHost = '127.0.0.1';
+  let rconPort = 25575;
+  let foundPort = true;
+
+  const networks = (info.NetworkSettings && info.NetworkSettings.Networks) || {};
+  const gameNet = networks['game-network'];
+  if (gameNet && gameNet.IPAddress) {
+    rconHost = gameNet.IPAddress;
+  }
+
+  const rconPortEnv = findEnvVar(info, 'RCON_PORT');
+  if (rconPortEnv) {
+    rconPort = parseInt(rconPortEnv, 10);
+  }
+
+  for (const [containerPort, bindings] of Object.entries(ports)) {
+    if (bindings && bindings.length > 0 && parseInt(containerPort.split('/')[0], 10) === rconPort) {
+      rconHost = '127.0.0.1';
+      rconPort = parseInt(bindings[0].HostPort, 10);
+      break;
+    }
+  }
+
+  const rconPassword = findEnvVar(info, 'RCON_PASSWORD') || undefined;
+
+  return { rconHost, rconPort, foundPort, rconPassword };
+}
+
+function resolveFactorioRcon(info, containerName) {
+  const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
+  let rconHost = '127.0.0.1';
+  let rconPort = 27015;
+  let foundPort = true;
+
+  const networks = (info.NetworkSettings && info.NetworkSettings.Networks) || {};
+  const gameNet = networks['game-network'];
+  if (gameNet && gameNet.IPAddress) {
+    rconHost = gameNet.IPAddress;
+  }
+
+  const rconPortEnv = findEnvVar(info, 'RCON_PORT');
+  if (rconPortEnv) {
+    rconPort = parseInt(rconPortEnv, 10);
+  }
+
+  for (const [containerPort, bindings] of Object.entries(ports)) {
+    if (bindings && bindings.length > 0 && parseInt(containerPort.split('/')[0], 10) === rconPort) {
+      rconHost = '127.0.0.1';
+      rconPort = parseInt(bindings[0].HostPort, 10);
+      break;
+    }
+  }
+
+  // Read password from factorioConfig
+  const factorioConfig = require('../services/factorioConfig');
+  const config = factorioConfig.readConfig(containerName);
+  const rconPassword = config.json.rcon_password || undefined;
+
+  return { rconHost, rconPort, foundPort, rconPassword };
+}
+
 router.post('/:id/rcon', async (req, res) => {
   const { id } = req.params;
   const { command } = req.body || {};
@@ -134,6 +197,11 @@ router.post('/:id/rcon', async (req, res) => {
   let rconResult;
   if (game === 'cs2') {
     rconResult = resolveCs2Rcon(info);
+  } else if (game === 'minecraft') {
+    rconResult = resolveMinecraftRcon(info);
+  } else if (game === 'factorio') {
+    const containerName = info.Name.replace(/^\//, '');
+    rconResult = resolveFactorioRcon(info, containerName);
   } else {
     rconResult = resolveIcarusRcon(info);
   }

@@ -109,6 +109,46 @@ const CS2_CONFIG_FIELDS = [
   { key: 'CS2_LOG_ITEMS', label: 'Log Items', type: 'select', options: ['0', '1'], help: 'Log item events' },
 ];
 
+const MINECRAFT_CONFIG_FIELDS = [
+  { key: 'EULA', label: 'Accept EULA', type: 'select', options: ['TRUE', 'FALSE'], help: 'Must be TRUE to run the server' },
+  { key: 'VERSION', label: 'Minecraft Version', type: 'text', placeholder: 'LATEST', help: 'e.g. LATEST, SNAPSHOT, 1.21.4' },
+  { key: 'TYPE', label: 'Server Type', type: 'select', options: ['VANILLA', 'PAPER', 'SPIGOT', 'FORGE', 'FABRIC'], help: 'Server software type' },
+  { key: 'MOTD', label: 'Message of the Day', type: 'text', placeholder: 'A Minecraft Server', help: 'Server description in multiplayer list' },
+  { key: 'DIFFICULTY', label: 'Difficulty', type: 'select', options: ['peaceful', 'easy', 'normal', 'hard'], help: 'Game difficulty' },
+  { key: 'MODE', label: 'Game Mode', type: 'select', options: ['survival', 'creative', 'adventure', 'spectator'], help: 'Default game mode' },
+  { key: 'LEVEL', label: 'World Name', type: 'text', placeholder: 'world', help: 'Name of the world save folder' },
+  { key: 'SEED', label: 'World Seed', type: 'text', placeholder: '', help: 'Seed for world generation' },
+  { key: 'MAX_PLAYERS', label: 'Max Players', type: 'number', placeholder: '20', min: '1', help: 'Maximum concurrent players' },
+  { key: 'VIEW_DISTANCE', label: 'View Distance', type: 'number', placeholder: '10', min: '2', max: '32', help: 'Chunk render distance' },
+  { key: 'ONLINE_MODE', label: 'Online Mode', type: 'select', options: ['true', 'false'], help: 'Verify players with Mojang servers' },
+  { key: 'MEMORY', label: 'Memory (RAM)', type: 'text', placeholder: '1024M', help: 'JVM heap size (e.g. 2G, 1024M)' },
+  { key: 'ENABLE_RCON', label: 'Enable RCON', type: 'select', options: ['true', 'false'], help: 'Required for graceful shutdown and panel console' },
+  { key: 'RCON_PASSWORD', label: 'RCON Password', type: 'text', placeholder: 'changeme', help: 'Password for remote console' },
+];
+
+const FACTORIO_CONFIG_FIELDS = [
+  { key: 'name', label: 'Server Name', type: 'text', placeholder: 'Factorio Server', help: 'Name of the server' },
+  { key: 'description', label: 'Description', type: 'text', placeholder: '', help: 'Server description' },
+  { key: 'max_players', label: 'Max Players', type: 'number', placeholder: '0', help: '0 means unlimited' },
+  { key: 'game_password', label: 'Game Password', type: 'text', placeholder: '', help: 'Password to join the server' },
+  { key: 'require_user_verification', label: 'Verify Users', type: 'select', options: ['true', 'false'], help: 'Verify players with Factorio.com' },
+  { key: 'visibility.public', label: 'Public Visibility', type: 'select', options: ['true', 'false'], help: 'Show in public server browser' },
+  { key: 'visibility.lan', label: 'LAN Visibility', type: 'select', options: ['true', 'false'], help: 'Show in LAN server browser' },
+  { key: 'auto_pause', label: 'Auto Pause', type: 'select', options: ['true', 'false'], help: 'Pause game when no players are connected' },
+  { key: 'non_blocking_saving', label: 'Non-blocking Saving', type: 'select', options: ['true', 'false'], help: 'Save in background (Linux only)' },
+  { key: 'rcon_password', label: 'RCON Password', type: 'text', placeholder: '', help: 'Password for remote console (saved to rconpw file)' },
+];
+
+const TERRARIA_CONFIG_FIELDS = [
+  { key: 'ServerName', label: 'Server Name', type: 'text', placeholder: 'Terraria Server', help: 'Name of the server' },
+  { key: 'ServerPassword', label: 'Server Password', type: 'text', placeholder: '', help: 'Password to join the server' },
+  { key: 'ServerPort', label: 'Server Port', type: 'number', placeholder: '7777', help: 'Game server port' },
+  { key: 'MaxSlots', label: 'Max Players', type: 'number', placeholder: '8', help: 'Maximum concurrent players' },
+  { key: 'RestApiEnabled', label: 'Enable REST API', type: 'select', options: ['true', 'false'], help: 'Required for panel console' },
+  { key: 'RestApiPort', label: 'REST API Port', type: 'number', placeholder: '7878', help: 'Port for REST API' },
+  { key: 'ApplicationRestTokens', label: 'REST API Token', type: 'text', placeholder: '', help: 'Token for REST API access' },
+];
+
 const CS2_RCON_QUICK_COMMANDS = [
   { label: 'Status', cmd: 'status', immediate: true, help: 'Show server status and player list' },
   { label: 'Change Map...', cmd: 'changelevel ', help: 'changelevel <mapname>' },
@@ -131,6 +171,41 @@ const ICARUS_RCON_QUICK_COMMANDS = [
   { label: 'Return to Lobby', cmd: 'ReturnToLobby', immediate: true, help: 'Kick all players, return to lobby' },
   { label: 'Lobby When Empty', cmd: 'ReturnToLobbyWhenEmpty', immediate: true, help: 'Return to lobby as soon as server is empty' },
   { label: 'Admin Say...', cmd: 'AdminSay ', help: 'Broadcast message to all players' }
+];
+
+const MINECRAFT_RCON_QUICK_COMMANDS = [
+  { label: 'Status', cmd: 'list', immediate: true, help: 'List connected players' },
+  { label: 'Save All', cmd: 'save-all', immediate: true, help: 'Save the server to disk' },
+  { label: 'Kick...', cmd: 'kick ', help: 'kick <player> [reason]' },
+  { label: 'Ban...', cmd: 'ban ', help: 'ban <player> [reason]' },
+  { label: 'Pardon...', cmd: 'pardon ', help: 'pardon <player>' },
+  { label: 'Op...', cmd: 'op ', help: 'op <player>' },
+  { label: 'Deop...', cmd: 'deop ', help: 'deop <player>' },
+  { label: 'Whitelist Add...', cmd: 'whitelist add ', help: 'whitelist add <player>' },
+  { label: 'Whitelist Remove...', cmd: 'whitelist remove ', help: 'whitelist remove <player>' },
+  { label: 'Stop', cmd: 'stop', immediate: true, help: 'Gracefully stop the server' },
+];
+
+const FACTORIO_RCON_QUICK_COMMANDS = [
+  { label: 'Status', cmd: '/players', immediate: true, help: 'List connected players' },
+  { label: 'Save', cmd: '/server-save', immediate: true, help: 'Save the server to disk' },
+  { label: 'Kick...', cmd: '/kick ', help: '/kick <player> [reason]' },
+  { label: 'Ban...', cmd: '/ban ', help: '/ban <player> [reason]' },
+  { label: 'Unban...', cmd: '/unban ', help: '/unban <player>' },
+  { label: 'Admins', cmd: '/admins', immediate: true, help: 'List admins' },
+  { label: 'Promote...', cmd: '/promote ', help: '/promote <player>' },
+  { label: 'Demote...', cmd: '/demote ', help: '/demote <player>' },
+  { label: 'Time', cmd: '/time', immediate: true, help: 'Show game time' },
+];
+
+const TERRARIA_REST_QUICK_COMMANDS = [
+  { label: 'Status', cmd: 'playing', immediate: true, help: 'List connected players' },
+  { label: 'Save', cmd: 'save', immediate: true, help: 'Save the server to disk' },
+  { label: 'Kick...', cmd: 'kick ', help: 'kick <player> [reason]' },
+  { label: 'Ban...', cmd: 'ban ', help: 'ban <player> [reason]' },
+  { label: 'Broadcast...', cmd: 'broadcast ', help: 'broadcast <message>' },
+  { label: 'Time', cmd: 'time', immediate: true, help: 'Show game time' },
+  { label: 'Off', cmd: 'off', immediate: true, help: 'Gracefully stop the server' },
 ];
 
 // Track the current container being edited
@@ -249,7 +324,10 @@ function createRconPanel(containerId, game) {
   const quickRow = document.createElement('div');
   quickRow.className = 'flex flex-wrap gap-2 mt-1';
 
-  const quickCommands = (game === 'cs2') ? CS2_RCON_QUICK_COMMANDS : ICARUS_RCON_QUICK_COMMANDS;
+  const quickCommands = (game === 'cs2') ? CS2_RCON_QUICK_COMMANDS :
+                        (game === 'minecraft') ? MINECRAFT_RCON_QUICK_COMMANDS :
+                        (game === 'factorio') ? FACTORIO_RCON_QUICK_COMMANDS :
+                        ICARUS_RCON_QUICK_COMMANDS;
 
   quickCommands.forEach(qc => {
     const btn = document.createElement('button');
@@ -275,6 +353,139 @@ function createRconPanel(containerId, game) {
     if (!cmd.trim() || session.loading) return;
     input.value = '';
     sendRconCommand(containerId, cmd, output, session);
+  }
+
+  sendBtn.addEventListener('click', handleSend);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSend();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (session.history.length === 0) return;
+      if (session.historyIndex > 0) {
+        session.historyIndex--;
+      }
+      input.value = session.history[session.historyIndex] || '';
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (session.historyIndex < session.history.length - 1) {
+        session.historyIndex++;
+        input.value = session.history[session.historyIndex] || '';
+      } else {
+        session.historyIndex = session.history.length;
+        input.value = '';
+      }
+    }
+  });
+
+  panel.appendChild(output);
+  panel.appendChild(quickRow);
+  panel.appendChild(inputRow);
+
+  return panel;
+}
+
+async function sendRestCommand(containerId, command, outputEl, session) {
+  if (!command.trim()) return;
+
+  session.history.push(command);
+  session.historyIndex = session.history.length;
+
+  appendRconOutput(outputEl, `> ${command}`, 'command');
+
+  session.loading = true;
+  const panel = outputEl.closest('.rcon-panel');
+  const sendBtn = panel.querySelector('.rcon-send-btn');
+  const input = panel.querySelector('.rcon-input');
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/rest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      appendRconOutput(outputEl, data.response || '(empty response)', 'response');
+    } else {
+      const errMsg = data.message || `Error ${res.status}`;
+      appendRconOutput(outputEl, `Error: ${errMsg}`, 'error');
+    }
+  } catch (err) {
+    appendRconOutput(outputEl, `Error: ${err.message}`, 'error');
+  } finally {
+    session.loading = false;
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send';
+    }
+    if (input) {
+      input.focus();
+    }
+  }
+}
+
+function createRestPanel(containerId) {
+  const session = getRconSession(containerId);
+
+  const panel = document.createElement('div');
+  panel.className = 'rcon-panel mt-3 border-t border-gray-600 pt-3 flex flex-col gap-2';
+
+  const output = document.createElement('div');
+  output.className =
+    'bg-gray-900 rounded border border-gray-700 p-2 h-40 overflow-y-auto text-xs font-mono';
+  output.innerHTML = '<div class="text-gray-500 text-xs">REST Console ready. Type a command and press Send.</div>';
+
+  const inputRow = document.createElement('div');
+  inputRow.className = 'flex gap-2';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className =
+    'rcon-input flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500';
+  input.placeholder = 'Enter REST command...';
+  input.disabled = false;
+
+  const sendBtn = document.createElement('button');
+  sendBtn.className =
+    'rcon-send-btn px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors';
+  sendBtn.textContent = 'Send';
+
+  inputRow.appendChild(input);
+  inputRow.appendChild(sendBtn);
+
+  const quickRow = document.createElement('div');
+  quickRow.className = 'flex flex-wrap gap-2 mt-1';
+
+  TERRARIA_REST_QUICK_COMMANDS.forEach(qc => {
+    const btn = document.createElement('button');
+    btn.className = 'px-2 py-1 bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded text-xs text-gray-300 transition-colors';
+    btn.textContent = qc.label;
+    if (qc.help) btn.title = qc.help;
+    btn.addEventListener('click', () => {
+      if (qc.immediate) {
+        sendRestCommand(containerId, qc.cmd, output, session);
+      } else {
+        input.value = qc.cmd;
+        input.focus();
+      }
+    });
+    quickRow.appendChild(btn);
+  });
+
+  function handleSend() {
+    const cmd = input.value;
+    if (!cmd.trim() || session.loading) return;
+    input.value = '';
+    sendRestCommand(containerId, cmd, output, session);
   }
 
   sendBtn.addEventListener('click', handleSend);
@@ -357,8 +568,17 @@ function renderContainerCard(container) {
   const badgeColor = statusColor(container.state);
   const session = getRconSession(container.id);
   const game = container.game || 'icarus';
-  const gameLabel = game === 'cs2' ? 'CS2' : game === 'icarus' ? 'Icarus' : game;
-  const gameBadgeColor = game === 'cs2' ? 'bg-orange-600' : 'bg-blue-600';
+  const gameLabel = game === 'cs2' ? 'CS2' : 
+                    game === 'minecraft' ? 'Minecraft' :
+                    game === 'factorio' ? 'Factorio' :
+                    game === 'terraria' ? 'Terraria' :
+                    game === 'icarus' ? 'Icarus' : game;
+  
+  const gameBadgeColor = game === 'cs2' ? 'bg-orange-600' : 
+                         game === 'minecraft' ? 'bg-emerald-600' :
+                         game === 'factorio' ? 'bg-red-600' :
+                         game === 'terraria' ? 'bg-green-600' :
+                         'bg-blue-600';
 
   const card = document.createElement('div');
   card.className =
@@ -379,8 +599,8 @@ function renderContainerCard(container) {
       <div class="flex items-center gap-2">
         <button class="start-btn px-3 py-1 text-xs font-medium rounded bg-green-700 hover:bg-green-600 text-white transition-colors ${container.state === 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state === 'running' ? 'disabled' : ''}>Start</button>
         <button class="stop-btn px-3 py-1 text-xs font-medium rounded bg-red-700 hover:bg-red-600 text-white transition-colors ${container.state !== 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state !== 'running' ? 'disabled' : ''}>Stop</button>
-        <button class="rcon-toggle-btn px-3 py-1 text-xs font-medium rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="Open RCON Console">
-          RCON
+        <button class="rcon-toggle-btn px-3 py-1 text-xs font-medium rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="Open Console">
+          ${game === 'terraria' ? 'Console' : 'RCON'}
         </button>
         <span class="state-badge inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white ${badgeColor}">
           ${container.state}
@@ -467,8 +687,12 @@ function renderContainerCard(container) {
   const rconContainer = card.querySelector('.rcon-container');
 
   if (session.open) {
-    rconContainer.appendChild(createRconPanel(container.id, game));
-    toggleBtn.textContent = 'Close RCON';
+    if (game === 'terraria') {
+      rconContainer.appendChild(createRestPanel(container.id));
+    } else {
+      rconContainer.appendChild(createRconPanel(container.id, game));
+    }
+    toggleBtn.textContent = game === 'terraria' ? 'Close Console' : 'Close RCON';
     toggleBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
     toggleBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
   }
@@ -476,16 +700,19 @@ function renderContainerCard(container) {
   toggleBtn.addEventListener('click', () => {
     session.open = !session.open;
     if (session.open) {
-      rconContainer.appendChild(createRconPanel(container.id, game));
-      toggleBtn.textContent = 'Close RCON';
+      if (game === 'terraria') {
+        rconContainer.appendChild(createRestPanel(container.id));
+      } else {
+        rconContainer.appendChild(createRconPanel(container.id, game));
+      }
+      toggleBtn.textContent = game === 'terraria' ? 'Close Console' : 'Close RCON';
       toggleBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
       toggleBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
-      // Focus the input
       const input = rconContainer.querySelector('.rcon-input');
       if (input) input.focus();
     } else {
       rconContainer.innerHTML = '';
-      toggleBtn.textContent = 'RCON';
+      toggleBtn.textContent = game === 'terraria' ? 'Console' : 'RCON';
       toggleBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
       toggleBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
     }
@@ -861,7 +1088,126 @@ function buildCs2ConfigForm(config) {
   return html;
 }
 
-function renderCs2FormField(field, value) {
+function buildMinecraftConfigForm(config) {
+  let html = '';
+  const env = (config && config.env) || {};
+
+  const groups = [
+    { title: 'Server', fields: ['EULA', 'VERSION', 'TYPE', 'MOTD', 'MAX_PLAYERS', 'MEMORY'] },
+    { title: 'Gameplay', fields: ['DIFFICULTY', 'MODE', 'LEVEL', 'SEED', 'VIEW_DISTANCE'] },
+    { title: 'Advanced', fields: ['ONLINE_MODE', 'ENABLE_RCON', 'RCON_PASSWORD'] },
+  ];
+
+  const fieldMap = {};
+  MINECRAFT_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+
+  groups.forEach(group => {
+    html += '<div class="mb-4">';
+    html += `<h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">${group.title}</h3>`;
+    group.fields.forEach(key => {
+      const field = fieldMap[key];
+      if (field) {
+        const value = env[key] !== undefined ? env[key] : '';
+        html += renderCs2FormField(field, value); // Reuse the env var renderer
+      }
+    });
+    html += '</div>';
+  });
+
+  return html;
+}
+
+function buildFactorioConfigForm(config) {
+  let html = '';
+  const json = (config && config.json) || {};
+
+  const groups = [
+    { title: 'Server', fields: ['name', 'description', 'max_players', 'game_password'] },
+    { title: 'Visibility', fields: ['visibility.public', 'visibility.lan'] },
+    { title: 'Advanced', fields: ['require_user_verification', 'auto_pause', 'non_blocking_saving', 'rcon_password'] },
+  ];
+
+  const fieldMap = {};
+  FACTORIO_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+
+  groups.forEach(group => {
+    html += '<div class="mb-4">';
+    html += `<h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">${group.title}</h3>`;
+    group.fields.forEach(key => {
+      const field = fieldMap[key];
+      if (field) {
+        let value = json[key];
+        if (value === true) value = 'true';
+        if (value === false) value = 'false';
+        if (value === undefined) value = '';
+        html += renderJsonFormField(field, value);
+      }
+    });
+    html += '</div>';
+  });
+
+  return html;
+}
+
+function buildTerrariaConfigForm(config) {
+  let html = '';
+  const json = (config && config.json) || {};
+
+  const groups = [
+    { title: 'Server', fields: ['ServerName', 'ServerPassword', 'ServerPort', 'MaxSlots'] },
+    { title: 'REST API', fields: ['RestApiEnabled', 'RestApiPort', 'ApplicationRestTokens'] },
+  ];
+
+  const fieldMap = {};
+  TERRARIA_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+
+  groups.forEach(group => {
+    html += '<div class="mb-4">';
+    html += `<h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">${group.title}</h3>`;
+    group.fields.forEach(key => {
+      const field = fieldMap[key];
+      if (field) {
+        let value = json[key];
+        if (value === true) value = 'true';
+        if (value === false) value = 'false';
+        if (value === undefined) value = '';
+        html += renderJsonFormField(field, value);
+      }
+    });
+    html += '</div>';
+  });
+
+  return html;
+}
+
+function renderJsonFormField(field, value) {
+  const escaped = String(value || '').replace(/"/g, '&quot;');
+  const inputId = `cfg-json-${field.key}`.replace(/[^a-zA-Z0-9-]/g, '_');
+  let inputHtml = '';
+
+  if (field.type === 'select' && field.options) {
+    inputHtml = `<select id="${inputId}" data-key="${field.key}" data-section="json" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">`;
+    field.options.forEach(opt => {
+      const selected = (String(value) === opt) ? 'selected' : '';
+      const label = opt === '' ? '-- Default --' : opt;
+      inputHtml += `<option value="${opt}" ${selected}>${label}</option>`;
+    });
+    inputHtml += '</select>';
+  } else if (field.type === 'number') {
+    const minAttr = field.min ? `min="${field.min}"` : '';
+    const maxAttr = field.max ? `max="${field.max}"` : '';
+    inputHtml = `<input type="number" id="${inputId}" data-key="${field.key}" data-section="json" value="${escaped}" placeholder="${field.placeholder || ''}" ${minAttr} ${maxAttr} class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">`;
+  } else {
+    inputHtml = `<input type="text" id="${inputId}" data-key="${field.key}" data-section="json" value="${escaped}" placeholder="${field.placeholder || ''}" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">`;
+  }
+
+  return `
+    <div class="mb-3">
+      <label for="${inputId}" class="block text-sm font-medium text-gray-300 mb-1">${field.label}${field.help ? `<span class="block text-xs font-normal text-gray-500 mt-0.5">${field.help}</span>` : ''}</label>
+      ${inputHtml}
+    </div>
+  `;
+}
   const escaped = String(value || '').replace(/"/g, '&quot;');
   const inputId = `cfg-cs2-${field.key}`.replace(/[^a-zA-Z0-9-]/g, '_');
   let inputHtml = '';
@@ -922,7 +1268,7 @@ function renderFormField(field, value) {
  * Collect form values and merge them back into the original config structure.
  */
 function collectFormConfig() {
-  if (currentEditGame === 'cs2') {
+  if (currentEditGame === 'cs2' || currentEditGame === 'minecraft') {
     const updatedEnv = {};
     const inputs = configModalBody.querySelectorAll('input, select');
     inputs.forEach(input => {
@@ -933,6 +1279,20 @@ function collectFormConfig() {
     const updatedConfig = JSON.parse(JSON.stringify(currentEditConfig));
     if (!updatedConfig.env) updatedConfig.env = {};
     Object.assign(updatedConfig.env, updatedEnv);
+    return { config: updatedConfig, launchParams: null };
+  }
+
+  if (currentEditGame === 'factorio' || currentEditGame === 'terraria') {
+    const updatedJson = {};
+    const inputs = configModalBody.querySelectorAll('input, select');
+    inputs.forEach(input => {
+      if (input.dataset.section === 'json') {
+        updatedJson[input.dataset.key] = input.value;
+      }
+    });
+    const updatedConfig = JSON.parse(JSON.stringify(currentEditConfig));
+    if (!updatedConfig.json) updatedConfig.json = {};
+    Object.assign(updatedConfig.json, updatedJson);
     return { config: updatedConfig, launchParams: null };
   }
 
@@ -998,6 +1358,12 @@ async function openConfigEditor(containerId, containerName, containerState, game
 
     if (currentEditGame === 'cs2') {
       bodyHtml += buildCs2ConfigForm(currentEditConfig);
+    } else if (currentEditGame === 'minecraft') {
+      bodyHtml += buildMinecraftConfigForm(currentEditConfig);
+    } else if (currentEditGame === 'factorio') {
+      bodyHtml += buildFactorioConfigForm(currentEditConfig);
+    } else if (currentEditGame === 'terraria') {
+      bodyHtml += buildTerrariaConfigForm(currentEditConfig);
     } else {
       bodyHtml += buildConfigForm(currentEditConfig, currentEditLaunchParams);
     }

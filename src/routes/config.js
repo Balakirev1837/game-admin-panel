@@ -1,6 +1,9 @@
 const express = require('express');
 const icarusConfig = require('../services/icarusConfig');
 const cs2Config = require('../services/cs2Config');
+const minecraftConfig = require('../services/minecraftConfig');
+const factorioConfig = require('../services/factorioConfig');
+const terrariaConfig = require('../services/terrariaConfig');
 const { docker } = require('../services/docker');
 
 const router = express.Router();
@@ -26,7 +29,16 @@ router.get('/:id/config', async (req, res) => {
 
     if (game === 'cs2') {
       const config = cs2Config.readEnvFile(containerName);
-      return res.json({ config, game: 'cs2' });
+      return res.json({ config, game });
+    } else if (game === 'minecraft') {
+      const config = minecraftConfig.readEnvFile(containerName);
+      return res.json({ config, game });
+    } else if (game === 'factorio') {
+      const config = factorioConfig.readConfig(containerName);
+      return res.json({ config, game });
+    } else if (game === 'terraria') {
+      const config = terrariaConfig.readConfig(containerName);
+      return res.json({ config, game });
     }
 
     const config = icarusConfig.readConfig(containerName);
@@ -55,7 +67,28 @@ router.put('/:id/config', async (req, res) => {
         return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
       }
       const written = cs2Config.writeEnvFile(containerName, config);
-      return res.json({ success: true, config: written, game: 'cs2' });
+      return res.json({ success: true, config: written, game });
+    } else if (game === 'minecraft') {
+      const validation = minecraftConfig.validateEnvData(config);
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
+      }
+      const written = minecraftConfig.writeEnvFile(containerName, config);
+      return res.json({ success: true, config: written, game });
+    } else if (game === 'factorio') {
+      const validation = factorioConfig.validateConfigData(config);
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
+      }
+      const written = factorioConfig.writeConfig(containerName, config);
+      return res.json({ success: true, config: written, game });
+    } else if (game === 'terraria') {
+      const validation = terrariaConfig.validateConfigData(config);
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
+      }
+      const written = terrariaConfig.writeConfig(containerName, config);
+      return res.json({ success: true, config: written, game });
     }
 
     const validation = icarusConfig.validateConfig(config);
