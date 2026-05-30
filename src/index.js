@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { verifyDockerConnection } = require('./services/docker');
+const { router: authRouter, authMiddleware } = require('./routes/auth');
 const containersRouter = require('./routes/containers');
 const configRouter = require('./routes/config');
 const rconRouter = require('./routes/rcon');
@@ -33,6 +34,9 @@ app.get('/api/version', (_req, res) => {
   }
 });
 
+app.use('/api/auth', authRouter);
+
+app.use('/api/containers', authMiddleware);
 app.use('/api/containers', containersRouter);
 app.use('/api/containers', configRouter);
 app.use('/api/containers', rconRouter);
@@ -40,6 +44,8 @@ app.use('/api/containers', restRouter);
 app.use('/api/containers', prospectsRouter);
 app.use('/api/containers', resourcesRouter);
 app.use('/api/containers', logsRouter);
+
+app.use('/api/host', authMiddleware);
 app.use('/api/host', hostRouter);
 
 if (require.main === module) {

@@ -1534,6 +1534,9 @@ function closeConfigEditor() {
   currentEditConfig = null;
   currentEditLaunchParams = null;
   currentEditGame = null;
+  configModalSave.classList.remove('hidden');
+  configModalSave.textContent = 'Save Config';
+  document.getElementById('config-modal-backups').classList.remove('hidden');
 }
 
 /**
@@ -1581,6 +1584,70 @@ configModalClose.addEventListener('click', closeConfigEditor);
 configModalCancel.addEventListener('click', closeConfigEditor);
 configModalBackdrop.addEventListener('click', closeConfigEditor);
 configModalSave.addEventListener('click', saveConfig);
+
+document.getElementById('config-modal-backups').addEventListener('click', async function () {
+  if (!currentEditContainer) return;
+  this.disabled = true;
+  this.textContent = 'Loading...';
+  try {
+    const res = await fetch(`${API_BASE}/${currentEditContainer.id}/config/backups`);
+    const data = await res.json();
+    const backups = data.backups || [];
+    if (backups.length === 0) {
+      showToast('No backups found', 'warning');
+      this.disabled = false;
+      this.textContent = 'Backups';
+      return;
+    }
+    const listHtml = backups.map(b => {
+      const date = new Date(b.created).toLocaleString();
+      const size = b.size > 1024 ? (b.size / 1024).toFixed(1) + ' KB' : b.size + ' B';
+      return `<div class="flex items-center justify-between py-2 px-3 bg-gray-700 rounded mb-1.5">
+        <div>
+          <div class="text-sm text-white">${date}</div>
+          <div class="text-xs text-gray-400">${size} &middot; ${b.file}</div>
+        </div>
+        <button class="backup-restore-btn px-3 py-1 text-xs rounded bg-yellow-700 hover:bg-yellow-600 text-white" data-file="${b.file}">Restore</button>
+      </div>`;
+    }).join('');
+    configModalBody.innerHTML = `
+      <div class="mb-3">
+        <h3 class="text-sm font-medium text-gray-300 mb-2">Backup History (${backups.length})</h3>
+        ${listHtml}
+      </div>
+    `;
+    configModalBody.querySelectorAll('.backup-restore-btn').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        if (!confirm('Restore this backup? Current config will be replaced.')) return;
+        this.disabled = true;
+        this.textContent = 'Restoring...';
+        try {
+          const restoreRes = await fetch(`${API_BASE}/${currentEditContainer.id}/config/restore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: this.dataset.file }),
+          });
+          const restoreData = await restoreRes.json();
+          if (restoreRes.ok) {
+            showToast('Backup restored. Reload config to see changes.', 'success');
+          } else {
+            showToast(restoreData.error || 'Restore failed', 'error');
+          }
+        } catch (err) {
+          showToast('Restore failed: ' + err.message, 'error');
+        }
+        this.disabled = false;
+        this.textContent = 'Restore';
+      });
+    });
+    configModalSave.classList.add('hidden');
+    document.getElementById('config-modal-backups').classList.add('hidden');
+  } catch (err) {
+    showToast('Failed to load backups', 'error');
+  }
+  this.disabled = false;
+  this.textContent = 'Backups';
+});
 
 // Close modal on Escape key
 document.addEventListener('keydown', (e) => {
@@ -1882,8 +1949,96 @@ prospectsModalClose.addEventListener('click', closeProspectsModal);
 prospectsModalBackdrop.addEventListener('click', closeProspectsModal);
 prospectsModalCancel.addEventListener('click', closeProspectsModal);
 
+// ===================== Auth =====================
+
+let authToken = null;
+
+async function checkSession() {
+  try {
+    const headers = {};
+    if (authToken) headers['x-session-token'] = authToken;
+    const res = await fetch('/api/auth/session', { headers });
+    const data = await res.json();
+    if (data.authenticated) {
+      if (data.token) authToken = data.token;
+      document.getElementById('login-modal').classList.add('hidden');
+      document.getElementById('logout-btn').classList.toggle('hidden', !data.authRequired);
+      return true;
+    }
+    if (data.authRequired) {
+      showLoginModal();
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function showLoginModal() {
+  document.getElementById('login-modal').classList.remove('hidden');
+  document.getElementById('login-username').focus();
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit');
+  errorEl.classList.add('hidden');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (res.ok && data.authenticated) {
+      authToken = data.token || null;
+      document.getElementById('login-modal').classList.add('hidden');
+      document.getElementById('logout-btn').classList.toggle('hidden', !authToken);
+      document.getElementById('login-password').value = '';
+      fetchContainers();
+    } else {
+      errorEl.textContent = data.error || 'Login failed';
+      errorEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorEl.textContent = 'Connection error';
+    errorEl.classList.remove('hidden');
+  }
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Sign In';
+});
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  const headers = {};
+  if (authToken) headers['x-session-token'] = authToken;
+  await fetch('/api/auth/logout', { method: 'POST', headers });
+  authToken = null;
+  document.getElementById('logout-btn').classList.add('hidden');
+  showLoginModal();
+});
+
+const originalFetch = window.fetch;
+window.fetch = function (url, options = {}) {
+  if (authToken && typeof url === 'string' && url.startsWith('/api/') && !url.startsWith('/api/auth')) {
+    options.headers = { ...(options.headers || {}), 'x-session-token': authToken };
+  }
+  return originalFetch(url, options).then(res => {
+    if (res.status === 401 && typeof url === 'string' && !url.startsWith('/api/auth')) {
+      showLoginModal();
+    }
+    return res;
+  });
+};
+
 // Initial fetch
-fetchContainers();
+checkSession().then(authed => { if (authed) fetchContainers(); });
 
 // Load version
 async function loadVersion() {

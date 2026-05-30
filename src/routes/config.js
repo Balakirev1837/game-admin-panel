@@ -4,6 +4,7 @@ const cs2Config = require('../services/cs2Config');
 const minecraftConfig = require('../services/minecraftConfig');
 const factorioConfig = require('../services/factorioConfig');
 const terrariaConfig = require('../services/terrariaConfig');
+const backup = require('../services/backup');
 const { docker } = require('../services/docker');
 
 const router = express.Router();
@@ -61,6 +62,8 @@ router.put('/:id/config', async (req, res) => {
     const { name, game } = await resolveContainerInfo(id);
     const containerName = name || id;
 
+    backup.createBackup(containerName, game);
+
     if (game === 'cs2') {
       const validation = cs2Config.validateEnvData(config);
       if (!validation.valid) {
@@ -105,6 +108,39 @@ router.put('/:id/config', async (req, res) => {
 
     return res.json({ success: true, config: written, launchParams: updatedLaunchParams, game: 'icarus' });
   } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id/config/backups', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { name, game } = await resolveContainerInfo(id);
+    const containerName = name || id;
+    const backups = backup.listBackups(containerName);
+    return res.json({ backups, game });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:id/config/restore', async (req, res) => {
+  const { id } = req.params;
+  const { file } = req.body;
+
+  if (!file) {
+    return res.status(400).json({ error: 'Backup file name is required' });
+  }
+
+  try {
+    const { name, game } = await resolveContainerInfo(id);
+    const containerName = name || id;
+    const result = backup.restoreBackup(containerName, game, file);
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    if (err.message === 'Backup file not found') {
+      return res.status(404).json({ error: err.message });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
