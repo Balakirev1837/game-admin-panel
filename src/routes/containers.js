@@ -19,6 +19,7 @@ router.get('/', async (_req, res) => {
       image: c.Image,
       status: c.Status,
       state: c.State,
+      game: (c.Labels && c.Labels['game-admin-panel.game']) || null,
       ports: c.Ports.map((p) => ({
         IP: p.IP || '',
         PrivatePort: p.PrivatePort || null,

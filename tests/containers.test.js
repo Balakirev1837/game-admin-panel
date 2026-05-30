@@ -48,6 +48,7 @@ describe('GET /api/containers', () => {
       image: 'nginx:latest',
       status: 'Up 2 hours',
       state: 'running',
+      game: null,
       ports: [{ IP: '0.0.0.0', PrivatePort: 80, PublicPort: 8080, Type: 'tcp' }],
     });
 
