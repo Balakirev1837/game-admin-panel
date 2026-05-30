@@ -12,6 +12,30 @@ bd close <id>         # Complete work
 bd dolt push          # Push beads data to remote
 ```
 
+## Build & Deploy
+
+```bash
+# Dependencies must be installed on the HOST, not inside Docker.
+# Docker bridge DNS on Ubuntu + systemd-resolved causes npm install
+# to hang with EAI_AGAIN. The Dockerfile COPYs node_modules from host.
+npm install --omit=dev
+npm test                 # 84 tests, 9 suites — MUST pass before push
+
+# Build image (no network needed — node_modules is baked in)
+docker compose build admin-panel
+docker compose up -d admin-panel
+```
+
+## Version Bumping
+
+**Every push that changes code MUST bump `VERSION`.** This file is a single semver line (e.g. `1.2.0`) in the repo root. The panel displays it in the header via `/api/version`.
+
+- **Patch bump (1.2.0 → 1.2.1)**: Bug fixes, UI polish, copy changes, dependency updates
+- **Minor bump (1.2.0 → 1.3.0)**: New features, new endpoints, new frontend capabilities
+- **Major bump (1.2.0 → 2.0.0)**: Breaking API changes, architecture reworks
+
+Bump BEFORE committing — include the version change in the same commit as the work.
+
 ## Non-Interactive Shell Commands
 
 **ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.
