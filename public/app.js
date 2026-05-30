@@ -1208,6 +1208,7 @@ function renderJsonFormField(field, value) {
     </div>
   `;
 }
+function renderCs2FormField(field, value) {
   const escaped = String(value || '').replace(/"/g, '&quot;');
   const inputId = `cfg-cs2-${field.key}`.replace(/[^a-zA-Z0-9-]/g, '_');
   let inputHtml = '';
