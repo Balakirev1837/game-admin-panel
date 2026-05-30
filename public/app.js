@@ -355,15 +355,6 @@ function renderContainerCard(container) {
       </button>
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
-      <div class="mt-2 pt-2 border-t border-gray-700">
-        <div class="flex items-center gap-2 text-xs text-gray-500">
-          <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-          </svg>
-          <span>Loading resources...</span>
-        </div>
-      </div>
     </div>
     <div class="rcon-container"></div>
   `;
@@ -529,14 +520,15 @@ function updateCard(container) {
     statusEl.innerHTML = `<span class="font-medium text-gray-300">Status:</span> ${container.status}`;
   }
 
-  // Show/hide resources section
+  // Show/hide resources section — timer handles data updates
   const resContainer = card.querySelector('.resources-container');
   if (resContainer) {
     if (container.state === 'running') {
       resContainer.classList.remove('hidden');
-      fetchResources(container.id);
     } else {
       resContainer.classList.add('hidden');
+      resContainer.dataset.loaded = '';  // reset so it re-inits on next start
+      resContainer.innerHTML = '';
     }
   }
 }
@@ -656,8 +648,12 @@ async function fetchResources(containerId) {
 }
 
 function fetchAllResources() {
-  document.querySelectorAll('[data-container-id]').forEach(card => {
-    fetchResources(card.dataset.containerId);
+  Array.from(document.querySelectorAll('[data-container-id]')).forEach(card => {
+    const resEl = card.querySelector('.resources-container');
+    // Only fetch if resources section is visible (container is running)
+    if (resEl && !resEl.classList.contains('hidden')) {
+      fetchResources(card.dataset.containerId);
+    }
   });
 }
 
