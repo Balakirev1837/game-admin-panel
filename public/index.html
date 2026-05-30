@@ -98,6 +98,24 @@
     </div>
   </div>
 
+  <!-- Prospects Upload Modal -->
+  <div id="prospects-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black bg-opacity-60" id="prospects-modal-backdrop"></div>
+    <div class="relative bg-gray-800 rounded-lg shadow-2xl border border-gray-600 w-full max-w-md mx-4">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <h2 id="prospects-modal-title" class="text-xl font-semibold text-white">Prospects</h2>
+        <button id="prospects-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div id="prospects-modal-body" class="px-6 py-4 space-y-4 max-h-96 overflow-y-auto">
+        <!-- Existing prospects list and upload form -->
+      </div>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
+        <button id="prospects-modal-cancel" class="px-4 py-2 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition">Close</button>
+        <button id="prospects-modal-upload" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-500 transition font-medium">Upload</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ const { docker, verifyDockerConnection } = require('./services/docker');
 const containersRouter = require('./routes/containers');
 const configRouter = require('./routes/config');
 const rconRouter = require('./routes/rcon');
+const prospectsRouter = require('./routes/prospects');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,9 @@ app.use('/api/containers', configRouter);
 
 // Mount RCON routes
 app.use('/api/containers', rconRouter);
+
+// Mount prospect routes
+app.use('/api/containers', prospectsRouter);
 
 // Stop a Docker container
 app.post('/api/containers/:id/stop', async (req, res) => {

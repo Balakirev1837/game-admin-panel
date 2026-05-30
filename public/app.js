@@ -350,6 +350,9 @@ function renderContainerCard(container) {
       <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
         Server Config
       </button>
+      <button class="prospects-btn px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}">
+        Prospects
+      </button>
     </div>
     <div class="rcon-container"></div>
   `;
@@ -357,6 +360,11 @@ function renderContainerCard(container) {
   // Attach event listener for config button
   card.querySelector('.config-btn').addEventListener('click', function () {
     openConfigEditor(this.dataset.containerId, this.dataset.containerName, this.dataset.containerState);
+  });
+
+  // Attach event listener for prospects button
+  card.querySelector('.prospects-btn').addEventListener('click', function () {
+    openProspectsModal(this.dataset.containerId, this.dataset.containerName);
   });
 
   // Start button
@@ -771,6 +779,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !prospectModal.classList.contains('hidden')) {
     closeProspectModal();
   }
+  if (e.key === 'Escape' && !prospectsModal.classList.contains('hidden')) {
+    closeProspectsModal();
+  }
 });
 
 // ===================== Create Prospect Modal =====================
@@ -846,6 +857,219 @@ prospectModalClose.addEventListener('click', closeProspectModal);
 prospectModalBackdrop.addEventListener('click', closeProspectModal);
 prospectModalCancel.addEventListener('click', closeProspectModal);
 prospectModalSend.addEventListener('click', sendProspectCommand);
+
+// ===================== Prospects Upload Modal =====================
+
+const prospectsModal = document.getElementById('prospects-modal');
+const prospectsModalClose = document.getElementById('prospects-modal-close');
+const prospectsModalBackdrop = document.getElementById('prospects-modal-backdrop');
+const prospectsModalCancel = document.getElementById('prospects-modal-cancel');
+const prospectsModalUpload = document.getElementById('prospects-modal-upload');
+const prospectsModalBody = document.getElementById('prospects-modal-body');
+const prospectsModalTitle = document.getElementById('prospects-modal-title');
+let prospectsContainerId = null;
+let prospectsContainerName = null;
+let pendingProspectFile = null;
+let pendingProspectJSON = null;
+
+function closeProspectsModal() {
+  prospectsModal.classList.add('hidden');
+  prospectsContainerId = null;
+  prospectsContainerName = null;
+  pendingProspectFile = null;
+  pendingProspectJSON = null;
+  prospectsModalUpload.disabled = false;
+  prospectsModalUpload.textContent = 'Upload';
+}
+
+function renderProspectsList(prospects) {
+  if (!prospects || prospects.length === 0) {
+    return '<p class="text-gray-500 text-sm">No prospect files on server.</p>';
+  }
+  return `
+    <div class="mb-3">
+      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Server Prospects</h3>
+      <ul class="space-y-1">
+        ${prospects.map(p => `<li class="text-sm text-gray-300 bg-gray-900 rounded px-3 py-1.5 font-mono">${p.name}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function renderUploadArea() {
+  const status = pendingProspectFile
+    ? `Selected: <span class="text-green-400">${pendingProspectFile.name}</span>`
+    : 'Drop a .json prospect file here or click to browse';
+  const statusColor = pendingProspectFile ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-dashed border-gray-500';
+
+  return `
+    <div class="mb-3">
+      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Upload Local Prospect</h3>
+      <div id="prospect-drop-zone" class="border-2 ${statusColor} rounded-lg p-6 text-center cursor-pointer text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors">
+        <p>${status}</p>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">The file is validated client-side before upload to prevent corruption.</p>
+      <div id="prospect-name-area" class="${pendingProspectFile ? '' : 'hidden'} mt-3">
+        <label for="prospect-upload-name" class="block text-sm font-medium text-gray-300 mb-1">Prospect Name</label>
+        <input type="text" id="prospect-upload-name" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+  `;
+}
+
+async function openProspectsModal(containerId, containerName) {
+  prospectsContainerId = containerId;
+  prospectsContainerName = containerName;
+  prospectsModalTitle.textContent = `Prospects — ${containerName}`;
+  prospectsModalUpload.disabled = true;
+  prospectsModalUpload.textContent = 'Upload';
+  pendingProspectFile = null;
+  pendingProspectJSON = null;
+
+  prospectsModalBody.innerHTML = '<div class="flex items-center justify-center py-8"><span class="text-gray-400 text-sm">Loading...</span></div>';
+  prospectsModal.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/prospects`);
+    const data = await res.json();
+    pendingProspectList = Array.isArray(data) ? data : [];
+    prospectsModalBody.innerHTML = renderProspectsList(pendingProspectList) + renderUploadArea();
+    setupDropZone();
+  } catch (err) {
+    pendingProspectList = [];
+    prospectsModalBody.innerHTML = `<p class="text-red-400 text-sm">Failed to load: ${err.message}</p>`;
+  }
+}
+
+function setupDropZone() {
+  const zone = document.getElementById('prospect-drop-zone');
+  if (!zone) return;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+  zone.appendChild(input);
+
+  zone.addEventListener('click', () => input.click());
+
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('border-blue-400', 'text-blue-400');
+  });
+  zone.addEventListener('dragleave', () => {
+    zone.classList.remove('border-blue-400', 'text-blue-400');
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('border-blue-400', 'text-blue-400');
+    if (e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  });
+  input.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+}
+
+function handleFileSelect(file) {
+  if (!file.name.endsWith('.json')) {
+    showToast('Only .json files are accepted', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object') {
+        showToast('File does not contain a valid JSON object — may be corrupted', 'error');
+        return;
+      }
+      pendingProspectFile = file;
+      pendingProspectJSON = parsed;
+
+      const nameFromFile = file.name.replace(/\.json$/i, '');
+      prospectsModalBody.innerHTML = renderProspectsList(pendingProspectList) + renderUploadArea();
+      const nameInput = document.getElementById('prospect-upload-name');
+      if (nameInput) {
+        nameInput.value = nameFromFile;
+      }
+      prospectsModalUpload.disabled = false;
+      setupDropZone();
+      showToast('Prospect file validated successfully', 'success');
+    } catch {
+      showToast('Invalid JSON — file may be corrupted', 'error');
+    }
+  };
+  reader.onerror = () => showToast('Failed to read file', 'error');
+  reader.readAsText(file);
+}
+
+let pendingProspectList = []; // stored from list API
+
+prospectsModalUpload.addEventListener('click', async () => {
+  if (!pendingProspectFile || !pendingProspectJSON || !prospectsContainerId) return;
+
+  const nameInput = document.getElementById('prospect-upload-name');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    showToast('Please enter a prospect name', 'error');
+    return;
+  }
+
+  prospectsModalUpload.disabled = true;
+  prospectsModalUpload.textContent = 'Uploading...';
+
+  try {
+    const res = await fetch(`${API_BASE}/${prospectsContainerId}/prospects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, content: pendingProspectJSON }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      showToast(`Prospect "${name}.json" uploaded successfully!`, 'success');
+
+      // Offer to set LoadProspect in config
+      if (confirm(`Set LoadProspect to "${name}" so the server auto-loads this prospect on startup?`)) {
+        try {
+          const cfgRes = await fetch(`${API_BASE}/${prospectsContainerId}/config`);
+          const cfgData = await cfgRes.json();
+          const config = cfgData.config || {};
+          if (!config._root) config._root = {};
+          config._root.LoadProspect = name;
+          await fetch(`${API_BASE}/${prospectsContainerId}/config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config }),
+          });
+          showToast('LoadProspect set in server config', 'success');
+        } catch {
+          showToast('Prospect uploaded, but failed to update config', 'error');
+        }
+      }
+
+      closeProspectsModal();
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+      prospectsModalUpload.disabled = false;
+      prospectsModalUpload.textContent = 'Upload';
+    }
+  } catch (err) {
+    showToast('Upload failed: ' + err.message, 'error');
+    prospectsModalUpload.disabled = false;
+    prospectsModalUpload.textContent = 'Upload';
+  }
+});
+
+prospectsModalClose.addEventListener('click', closeProspectsModal);
+prospectsModalBackdrop.addEventListener('click', closeProspectsModal);
+prospectsModalCancel.addEventListener('click', closeProspectsModal);
 
 // Initial fetch
 fetchContainers();
