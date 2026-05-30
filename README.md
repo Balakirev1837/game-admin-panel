@@ -12,11 +12,19 @@ cd game-admin-panel
 # Create the shared Docker network (one-time)
 bash scripts/create-network.sh
 
-# Build and start
-docker compose up --build -d
+# Install dependencies on the host (avoids Docker bridge DNS issues on Ubuntu)
+npm install --omit=dev
+
+# Build the image (no network needed — node_modules is baked in)
+docker compose build admin-panel
+
+# Start the panel
+docker compose up -d
 ```
 
 The panel is now available at `http://<host>:3000`.
+
+> **Why `npm install` on the host?** Docker's bridge network on Ubuntu can experience intermittent DNS timeouts under `systemd-resolved`. Running `npm install` on the host (which has reliable DNS) and copying `node_modules` into the image eliminates build-time network failures entirely.
 
 ## Architecture
 
@@ -36,6 +44,9 @@ The panel is now available at `http://<host>:3000`.
 | GET | `/api/containers/:id/config` | Read server config (INI) |
 | PUT | `/api/containers/:id/config` | Write server config (INI) |
 | POST | `/api/containers/:id/rcon` | Send an RCON command |
+| GET | `/api/containers/:id/resources` | Container resource stats |
+| GET | `/api/containers/:id/prospects` | List prospect .json files |
+| POST | `/api/containers/:id/prospects` | Upload a prospect .json save |
 
 ## Adding a New Game Server
 
@@ -105,6 +116,6 @@ The new server appears automatically in the panel — no restart needed.
 
 ```bash
 npm install
-npm test          # 68 tests, 7 suites
+npm test          # 84 tests, 9 suites
 npm start         # Run without Docker (needs local Docker socket)
 ```
