@@ -354,6 +354,17 @@ function renderContainerCard(container) {
         Prospects
       </button>
     </div>
+    <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
+      <div class="mt-2 pt-2 border-t border-gray-700">
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <span>Loading resources...</span>
+        </div>
+      </div>
+    </div>
     <div class="rcon-container"></div>
   `;
 
@@ -458,6 +469,9 @@ function renderContainers(containers) {
 
   containers.forEach((container) => {
     serverList.appendChild(renderContainerCard(container));
+    if (container.state === 'running') {
+      fetchResources(container.id);
+    }
   });
 }
 
@@ -481,6 +495,81 @@ async function fetchContainers() {
   } catch (err) {
     showError(err.message);
   }
+}
+
+// ===================== Resource Monitor =====================
+
+function memoryBarColor(percent) {
+  if (percent > 80) return 'bg-red-500';
+  if (percent > 60) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
+function renderResources(containerId, resources) {
+  const container = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (!container) return;
+  const resEl = container.querySelector('.resources-container');
+  if (!resEl) return;
+
+  const mem = resources.memory || {};
+  const cpu = resources.cpu || {};
+  const net = resources.network || {};
+
+  resEl.innerHTML = `
+    <div class="mt-2 pt-2 border-t border-gray-700 text-xs space-y-1.5">
+      <div>
+        <div class="flex justify-between text-gray-400 mb-0.5">
+          <span>Memory</span>
+          <span>${mem.usage_human || '—'} / ${mem.limit_human || '—'} (${(mem.percent || 0).toFixed(1)}%)</span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-1.5">
+          <div class="${memoryBarColor(mem.percent || 0)} h-1.5 rounded-full transition-all duration-500" style="width:${Math.min(mem.percent || 0, 100)}%"></div>
+        </div>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>CPU</span>
+        <span>${(cpu.percent || 0).toFixed(1)}%</span>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>Network Rx</span>
+        <span>${net.rx_human || '—'}</span>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>Network Tx</span>
+        <span>${net.tx_human || '—'}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderResourcesError(containerId) {
+  const container = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (!container) return;
+  const resEl = container.querySelector('.resources-container');
+  if (!resEl) return;
+
+  resEl.innerHTML = `
+    <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">
+      Resources unavailable
+    </div>
+  `;
+}
+
+async function fetchResources(containerId) {
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/resources`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderResources(containerId, data);
+  } catch {
+    renderResourcesError(containerId);
+  }
+}
+
+function fetchAllResources() {
+  document.querySelectorAll('[data-container-id]').forEach(card => {
+    fetchResources(card.dataset.containerId);
+  });
 }
 
 // ===================== Config Editor =====================
@@ -1076,3 +1165,6 @@ fetchContainers();
 
 // Auto-refresh every 5 seconds
 setInterval(fetchContainers, 5000);
+
+// Auto-refresh resources every 10 seconds
+setInterval(fetchAllResources, 10000);
