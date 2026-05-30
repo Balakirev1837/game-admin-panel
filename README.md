@@ -1,6 +1,6 @@
 # Game Admin Panel
 
-A lightweight web dashboard for managing game servers running in Docker containers. Lists servers, starts/stops containers, edits INI configs, and sends RCON commands — all from a browser.
+A lightweight web dashboard for managing game servers running in Docker containers. Lists servers, starts/stops containers, edits INI configs, and sends RCON commands. This is firmly (houseplant software)[https://hannahilea.com/blog/houseplant-programming/]! It probably won't do what you want!
 
 ## Quick Start
 
