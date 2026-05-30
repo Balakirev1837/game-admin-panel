@@ -15,6 +15,32 @@
   </header>
 
   <main class="max-w-7xl mx-auto px-4 py-8">
+    <div id="host-stats" class="hidden mb-6 bg-gray-800 rounded-lg shadow-md p-4 border border-gray-700">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-white">Host</h2>
+        <div class="flex gap-3 text-xs text-gray-400">
+          <span id="host-name"></span>
+          <span id="host-uptime"></span>
+          <span id="host-docker-ver"></span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        <div>
+          <div class="flex justify-between text-gray-400 mb-1"><span>Memory</span><span id="host-mem-label">—</span></div>
+          <div class="w-full bg-gray-700 rounded-full h-1.5"><div id="host-mem-bar" class="bg-green-500 h-1.5 rounded-full transition-all duration-700" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-gray-400 mb-1"><span>Load (1/5/15m)</span><span id="host-load-label">—</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-gray-400 mb-1"><span>CPU Cores</span><span id="host-cpus-label">—</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-gray-400 mb-1"><span>Containers</span><span id="host-containers-label">—</span></div>
+        </div>
+      </div>
+    </div>
+
     <div id="server-list" class="grid gap-4">
       <!-- Server cards will be rendered here -->
     </div>

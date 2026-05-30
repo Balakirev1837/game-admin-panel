@@ -522,6 +522,85 @@ function createRestPanel(containerId) {
 
 // ===================== Toast notifications =====================
 
+function createLogsPanel(containerId) {
+  const panel = document.createElement('div');
+  panel.className = 'mt-2 pt-2 border-t border-gray-700';
+
+  let currentTail = '200';
+
+  panel.innerHTML = `
+    <div class="flex items-center gap-2 mb-2">
+      <select class="logs-tail-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+        <option value="100">Last 100</option>
+        <option value="200" selected>Last 200</option>
+        <option value="500">Last 500</option>
+        <option value="1000">Last 1000</option>
+        <option value="all">All</option>
+      </select>
+      <button class="logs-refresh-btn px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600">Refresh</button>
+      <button class="logs-download-btn px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600">Download</button>
+      <input type="text" class="logs-search bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-40" placeholder="Filter logs...">
+      <span class="logs-count text-xs text-gray-500"></span>
+    </div>
+    <div class="logs-output bg-gray-950 rounded p-2 font-mono text-xs overflow-y-auto max-h-64 whitespace-pre-wrap break-all"></div>
+  `;
+
+  const output = panel.querySelector('.logs-output');
+  const searchInput = panel.querySelector('.logs-search');
+  const countSpan = panel.querySelector('.logs-count');
+  let allLogs = [];
+
+  async function loadLogs() {
+    output.textContent = 'Loading...';
+    try {
+      const res = await fetch(`${API_BASE}/${containerId}/logs?tail=${currentTail}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      allLogs = data.logs || [];
+      renderFilteredLogs();
+    } catch (err) {
+      output.innerHTML = `<span class="text-red-400">Failed to load logs: ${err.message}</span>`;
+    }
+  }
+
+  function renderFilteredLogs() {
+    const query = (searchInput.value || '').toLowerCase();
+    const filtered = query
+      ? allLogs.filter(l => l.text.toLowerCase().includes(query))
+      : allLogs;
+    countSpan.textContent = `${filtered.length} lines`;
+    output.innerHTML = filtered.map(l => {
+      const color = l.stream === 'stderr' ? 'text-red-400' : 'text-gray-300';
+      const ts = l.timestamp ? `<span class="text-gray-600">${l.timestamp}</span> ` : '';
+      return `<div class="${color}">${ts}${escapeHtml(l.text)}</div>`;
+    }).join('');
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  panel.querySelector('.logs-tail-select').addEventListener('change', function () {
+    currentTail = this.value;
+    loadLogs();
+  });
+  panel.querySelector('.logs-refresh-btn').addEventListener('click', loadLogs);
+  panel.querySelector('.logs-download-btn').addEventListener('click', () => {
+    const text = allLogs.map(l => `[${l.stream}]${l.timestamp ? ' ' + l.timestamp : ''} ${l.text}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `logs-${containerId.substring(0, 8)}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  searchInput.addEventListener('input', renderFilteredLogs);
+
+  loadLogs();
+  return panel;
+}
+
 function showToast(message, type) {
   const toast = document.createElement('div');
   const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-yellow-600';
@@ -599,6 +678,8 @@ function renderContainerCard(container) {
       <div class="flex items-center gap-2">
         <button class="start-btn px-3 py-1 text-xs font-medium rounded bg-green-700 hover:bg-green-600 text-white transition-colors ${container.state === 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state === 'running' ? 'disabled' : ''}>Start</button>
         <button class="stop-btn px-3 py-1 text-xs font-medium rounded bg-red-700 hover:bg-red-600 text-white transition-colors ${container.state !== 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state !== 'running' ? 'disabled' : ''}>Stop</button>
+        <button class="restart-btn px-3 py-1 text-xs font-medium rounded bg-yellow-700 hover:bg-yellow-600 text-white transition-colors ${container.state !== 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state !== 'running' ? 'disabled' : ''}>Restart</button>
+        <button class="logs-btn px-3 py-1 text-xs font-medium rounded bg-gray-600 hover:bg-gray-500 text-gray-300 transition-colors">Logs</button>
         <button class="rcon-toggle-btn px-3 py-1 text-xs font-medium rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="Open Console">
           ${game === 'terraria' ? 'Console' : 'RCON'}
         </button>
@@ -611,8 +692,9 @@ function renderContainerCard(container) {
       <span class="font-medium text-gray-300">Image:</span> ${container.image}
     </div>
     <div class="container-status text-sm text-gray-400">
-      <span class="font-medium text-gray-300">Status:</span> ${container.status}
+      <span class="font-medium text-gray-300">Status:</span> ${container.status}${container.uptime ? ' &middot; <span class="font-medium text-gray-300">Uptime:</span> ' + container.uptime : ''}${container.restart_policy ? ' &middot; <span class="font-medium text-gray-300">Restart:</span> ' + container.restart_policy : ''}${container.exit_code != null && container.state !== 'running' ? ' &middot; <span class="text-red-400">Exit: ' + container.exit_code + (container.oom_killed ? ' (OOM Killed)' : '') + '</span>' : ''}
     </div>
+    ${container.health ? '<div class="text-sm text-gray-400"><span class="font-medium text-gray-300">Health:</span> <span class="' + (container.health.status === 'healthy' ? 'text-green-400' : container.health.status === 'unhealthy' ? 'text-red-400' : 'text-yellow-400') + '">' + container.health.status + '</span></div>' : ''}
     <div class="text-sm text-gray-400">
       <span class="font-medium text-gray-300">Ports:</span> ${formatPorts(container.ports)}
     </div>
@@ -625,6 +707,7 @@ function renderContainerCard(container) {
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
     </div>
     <div class="rcon-container"></div>
+    <div class="logs-container"></div>
   `;
 
   // Attach event listener for config button
@@ -680,6 +763,44 @@ function renderContainerCard(container) {
       this.disabled = false;
       this.textContent = 'Stop';
     }
+  });
+
+  // Restart button
+  card.querySelector('.restart-btn').addEventListener('click', async function () {
+    if (!confirm('Restart this server? Players will be disconnected.')) return;
+    this.disabled = true;
+    this.textContent = 'Restarting...';
+    try {
+      const res = await fetch(`${API_BASE}/${container.id}/restart`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${container.name} restarted`, 'success');
+      } else {
+        showToast(data.message || 'Restart failed', 'error');
+        this.disabled = false;
+        this.textContent = 'Restart';
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+      this.disabled = false;
+      this.textContent = 'Restart';
+    }
+  });
+
+  // Logs button
+  card.querySelector('.logs-btn').addEventListener('click', function () {
+    const logsContainer = card.querySelector('.logs-container');
+    if (logsContainer.innerHTML) {
+      logsContainer.innerHTML = '';
+      this.textContent = 'Logs';
+      this.classList.remove('bg-teal-700');
+      this.classList.add('bg-gray-600');
+      return;
+    }
+    this.textContent = 'Close Logs';
+    this.classList.remove('bg-gray-600');
+    this.classList.add('bg-teal-700');
+    logsContainer.appendChild(createLogsPanel(container.id));
   });
 
   // Wire up RCON toggle button
@@ -791,10 +912,21 @@ function updateCard(container) {
     if (container.state === 'running') stopBtn.textContent = 'Stop';
   }
 
-  // Update status text
+  const restartBtn = card.querySelector('.restart-btn');
+  if (restartBtn) {
+    restartBtn.disabled = container.state !== 'running';
+    restartBtn.classList.toggle('opacity-50', container.state !== 'running');
+    restartBtn.classList.toggle('cursor-not-allowed', container.state !== 'running');
+    if (container.state === 'running') restartBtn.textContent = 'Restart';
+  }
+
   const statusEl = card.querySelector('.container-status');
   if (statusEl) {
-    statusEl.innerHTML = `<span class="font-medium text-gray-300">Status:</span> ${container.status}`;
+    let statusHtml = `<span class="font-medium text-gray-300">Status:</span> ${container.status}`;
+    if (container.uptime) statusHtml += ` &middot; <span class="font-medium text-gray-300">Uptime:</span> ${container.uptime}`;
+    if (container.restart_policy) statusHtml += ` &middot; <span class="font-medium text-gray-300">Restart:</span> ${container.restart_policy}`;
+    if (container.exit_code != null && container.state !== 'running') statusHtml += ` &middot; <span class="text-red-400">Exit: ${container.exit_code}${container.oom_killed ? ' (OOM Killed)' : ''}</span>`;
+    statusEl.innerHTML = statusHtml;
   }
 
   // Show/hide resources section — timer handles data updates
@@ -863,6 +995,10 @@ function renderResources(containerId, resources) {
           <div class="w-full bg-gray-700 rounded-full h-1.5">
             <div class="res-mem-bar bg-green-500 h-1.5 rounded-full transition-all duration-700" style="width:0%"></div>
           </div>
+          <div class="flex justify-between text-gray-500 mt-0.5">
+            <span></span>
+            <span class="res-peak-label"></span>
+          </div>
         </div>
         <div class="flex justify-between text-gray-400">
           <span>CPU</span>
@@ -876,25 +1012,36 @@ function renderResources(containerId, resources) {
           <span>Network Tx</span>
           <span class="res-nettx-label">—</span>
         </div>
+        <div class="flex justify-between text-gray-500 res-pids-row hidden">
+          <span>Processes</span>
+          <span class="res-pids-label">—</span>
+        </div>
       </div>
     `;
   }
 
-  // Patch values in-place — no flicker
   const memLabel = resEl.querySelector('.res-mem-label');
   const memBar = resEl.querySelector('.res-mem-bar');
+  const peakLabel = resEl.querySelector('.res-peak-label');
   const cpuLabel = resEl.querySelector('.res-cpu-label');
   const netrxLabel = resEl.querySelector('.res-netrx-label');
   const nettxLabel = resEl.querySelector('.res-nettx-label');
+  const pidsRow = resEl.querySelector('.res-pids-row');
+  const pidsLabel = resEl.querySelector('.res-pids-label');
 
   if (memLabel) memLabel.textContent = `${mem.usage_human || '—'} / ${mem.limit_human || '—'} (${(mem.percent || 0).toFixed(1)}%)`;
   if (memBar) {
     memBar.style.width = `${Math.min(mem.percent || 0, 100)}%`;
     memBar.className = `res-mem-bar ${memoryBarColor(mem.percent || 0)} h-1.5 rounded-full transition-all duration-700`;
   }
+  if (peakLabel && mem.max_usage_human) peakLabel.textContent = `Peak: ${mem.max_usage_human}`;
   if (cpuLabel) cpuLabel.textContent = `${(cpu.percent || 0).toFixed(1)}%`;
   if (netrxLabel) netrxLabel.textContent = net.rx_human || '—';
   if (nettxLabel) nettxLabel.textContent = net.tx_human || '—';
+  if (pidsRow && pidsLabel && resources.pids != null) {
+    pidsRow.classList.remove('hidden');
+    pidsLabel.textContent = resources.pids;
+  }
 }
 
 function renderResourcesError(containerId) {
@@ -1749,8 +1896,51 @@ async function loadVersion() {
 }
 loadVersion();
 
-// Auto-refresh every 5 seconds
-setInterval(fetchContainers, 5000);
+async function fetchHostStats() {
+  try {
+    const res = await fetch('/api/host/stats');
+    if (!res.ok) return;
+    const data = await res.json();
+    const el = document.getElementById('host-stats');
+    if (!el) return;
+    el.classList.remove('hidden');
 
-// Auto-refresh resources every 10 seconds
+    const nameEl = document.getElementById('host-name');
+    const uptimeEl = document.getElementById('host-uptime');
+    const dockerVerEl = document.getElementById('host-docker-ver');
+    const memLabel = document.getElementById('host-mem-label');
+    const memBar = document.getElementById('host-mem-bar');
+    const loadLabel = document.getElementById('host-load-label');
+    const cpusLabel = document.getElementById('host-cpus-label');
+    const containersLabel = document.getElementById('host-containers-label');
+
+    if (nameEl) nameEl.textContent = data.hostname || '';
+    if (uptimeEl) {
+      const d = Math.floor(data.uptime / 86400);
+      const h = Math.floor((data.uptime % 86400) / 3600);
+      uptimeEl.textContent = `Up ${d}d ${h}h`;
+    }
+    if (dockerVerEl && data.docker) dockerVerEl.textContent = `Docker ${data.docker.version || ''}`;
+
+    if (memLabel && data.memory) {
+      memLabel.textContent = `${data.memory.used_human || '—'} / ${data.memory.total_human || '—'} (${(data.memory.percent || 0).toFixed(1)}%)`;
+    }
+    if (memBar && data.memory) {
+      const pct = Math.min(data.memory.percent || 0, 100);
+      memBar.style.width = `${pct}%`;
+      memBar.className = `${memoryBarColor(pct)} h-1.5 rounded-full transition-all duration-700`;
+    }
+    if (loadLabel && data.load_average) {
+      loadLabel.textContent = data.load_average.map(v => v.toFixed(2)).join(' / ');
+    }
+    if (cpusLabel) cpusLabel.textContent = data.cpus || '—';
+    if (containersLabel && data.docker) {
+      containersLabel.textContent = `${data.docker.containers_running || 0} running / ${data.docker.containers || 0} total`;
+    }
+  } catch { /* ignore */ }
+}
+fetchHostStats();
+
+setInterval(fetchContainers, 5000);
 setInterval(fetchAllResources, 10000);
+setInterval(fetchHostStats, 10000);

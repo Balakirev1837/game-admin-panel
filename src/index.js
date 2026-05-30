@@ -2,13 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { docker, verifyDockerConnection } = require('./services/docker');
+const os = require('os');
+const { verifyDockerConnection } = require('./services/docker');
 const containersRouter = require('./routes/containers');
 const configRouter = require('./routes/config');
 const rconRouter = require('./routes/rcon');
 const restRouter = require('./routes/rest');
 const prospectsRouter = require('./routes/prospects');
 const resourcesRouter = require('./routes/resources');
+const logsRouter = require('./routes/logs');
+const hostRouter = require('./routes/host');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,12 +20,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Health check endpoint
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Version endpoint
 app.get('/api/version', (_req, res) => {
   try {
     const version = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf-8').trim();
@@ -32,59 +33,14 @@ app.get('/api/version', (_req, res) => {
   }
 });
 
-// Mount container routes
 app.use('/api/containers', containersRouter);
-
-// Mount config routes
 app.use('/api/containers', configRouter);
-
-// Mount RCON routes
 app.use('/api/containers', rconRouter);
-
-// Mount REST routes
 app.use('/api/containers', restRouter);
-
-// Mount prospect routes
 app.use('/api/containers', prospectsRouter);
-
-// Mount resource routes
 app.use('/api/containers', resourcesRouter);
-
-// Stop a Docker container
-app.post('/api/containers/:id/stop', async (req, res) => {
-  const { id } = req.params;
-  if (!docker) {
-    return res.status(503).json({ success: false, message: 'Docker client is not available' });
-  }
-  try {
-    const container = docker.getContainer(id);
-    await container.stop();
-    return res.status(200).json({ success: true, message: 'Container stopped' });
-  } catch (err) {
-    if (err.statusCode === 404) {
-      return res.status(404).json({ success: false, message: 'Container not found' });
-    }
-    return res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Start a Docker container
-app.post('/api/containers/:id/start', async (req, res) => {
-  const { id } = req.params;
-  if (!docker) {
-    return res.status(503).json({ success: false, message: 'Docker client is not available' });
-  }
-  try {
-    const container = docker.getContainer(id);
-    await container.start();
-    return res.status(200).json({ success: true, message: 'Container started' });
-  } catch (err) {
-    if (err.statusCode === 404) {
-      return res.status(404).json({ success: false, message: 'Container not found' });
-    }
-    return res.status(500).json({ success: false, message: err.message });
-  }
-});
+app.use('/api/containers', logsRouter);
+app.use('/api/host', hostRouter);
 
 if (require.main === module) {
   verifyDockerConnection().then(() => {

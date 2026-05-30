@@ -3,7 +3,7 @@ const { parseStats, formatBytes } = require('../src/services/resources');
 describe('parseStats', () => {
   it('should parse memory from Docker stats', () => {
     const stats = {
-      memory_stats: { usage: 2147483648, limit: 17179869184 },
+      memory_stats: { usage: 2147483648, limit: 17179869184, max_usage: 3221225472 },
       cpu_stats: {
         cpu_usage: { total_usage: 100000000 },
         system_cpu_usage: 500000000,
@@ -23,8 +23,10 @@ describe('parseStats', () => {
 
     expect(result.memory.usage).toBe(2147483648);
     expect(result.memory.limit).toBe(17179869184);
+    expect(result.memory.max_usage).toBe(3221225472);
     expect(result.memory.usage_human).toBe('2.0 GB');
     expect(result.memory.limit_human).toBe('16.0 GB');
+    expect(result.memory.max_usage_human).toBe('3.0 GB');
     expect(result.memory.percent).toBeCloseTo(12.5, 1);
 
     expect(result.cpu.percent).toBeGreaterThan(0);
@@ -75,6 +77,29 @@ describe('parseStats', () => {
     expect(result.block.write).toBe(200);
     expect(result.block.read_human).toBe('100 B');
     expect(result.block.write_human).toBe('200 B');
+  });
+
+  it('should parse pids_stats when present', () => {
+    const stats = {
+      memory_stats: { usage: 100, limit: 1024 },
+      cpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0, online_cpus: 1 },
+      precpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0 },
+      networks: {},
+      pids_stats: { current: 42 },
+    };
+    const result = parseStats(stats);
+    expect(result.pids).toBe(42);
+  });
+
+  it('should return null pids when pids_stats missing', () => {
+    const stats = {
+      memory_stats: { usage: 100, limit: 1024 },
+      cpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0, online_cpus: 1 },
+      precpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0 },
+      networks: {},
+    };
+    const result = parseStats(stats);
+    expect(result.pids).toBeNull();
   });
 });
 

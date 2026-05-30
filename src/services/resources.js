@@ -1,16 +1,5 @@
-const Docker = require('dockerode');
+const { docker } = require('./docker');
 
-let docker;
-try {
-  docker = new Docker();
-} catch {
-  docker = null;
-}
-
-/**
- * Fetch a one-shot stats snapshot for a container.
- * Returns parsed memory, CPU, and network metrics.
- */
 async function getContainerResources(containerId) {
   if (!docker) throw new Error('Docker client not available');
 
@@ -37,18 +26,19 @@ function parseStats(stats) {
     block: {},
   };
 
-  // Memory
   const memStats = stats.memory_stats || {};
   const usage = memStats.usage || 0;
   const limit = memStats.limit || 0;
+  const maxUsage = memStats.max_usage || 0;
 
   result.memory.usage = usage;
   result.memory.limit = limit;
+  result.memory.max_usage = maxUsage;
   result.memory.usage_human = formatBytes(usage);
   result.memory.limit_human = formatBytes(limit);
+  result.memory.max_usage_human = formatBytes(maxUsage);
   result.memory.percent = limit > 0 ? ((usage / limit) * 100) : 0;
 
-  // CPU
   const cpuStats = stats.cpu_stats || {};
   const precpuStats = stats.precpu_stats || {};
   const cpuDelta = (cpuStats.cpu_usage && cpuStats.cpu_usage.total_usage || 0) -
@@ -61,7 +51,6 @@ function parseStats(stats) {
     : 0;
   result.cpu.cores = numCores;
 
-  // Network — aggregate all interfaces
   const networks = stats.networks || {};
   for (const iface of Object.values(networks)) {
     result.network.rx_bytes += iface.rx_bytes || 0;
@@ -70,7 +59,6 @@ function parseStats(stats) {
   result.network.rx_human = formatBytes(result.network.rx_bytes);
   result.network.tx_human = formatBytes(result.network.tx_bytes);
 
-  // Block I/O
   const blkioStats = stats.blkio_stats || {};
   const ioService = (blkioStats.io_service_bytes_recursive || [])
     .filter(x => x.op === 'Read' || x.op === 'Write');
@@ -84,6 +72,9 @@ function parseStats(stats) {
   result.block.write = writeBytes;
   result.block.read_human = formatBytes(readBytes);
   result.block.write_human = formatBytes(writeBytes);
+
+  const pids = stats.pids_stats || {};
+  result.pids = pids.current || null;
 
   return result;
 }
