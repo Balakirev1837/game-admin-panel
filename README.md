@@ -119,3 +119,7 @@ npm install
 npm test          # 84 tests, 9 suites
 npm start         # Run without Docker (needs local Docker socket)
 ```
+
+---
+
+This is firmly [houseplant software](https://hannahilea.com/blog/houseplant-programming/)! It probably won't do what you want!
