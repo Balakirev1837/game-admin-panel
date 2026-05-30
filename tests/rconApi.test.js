@@ -114,7 +114,7 @@ describe('POST /api/containers/:id/rcon', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true, response: 'players: 0' });
-    expect(mockSendRconCommand).toHaveBeenCalledWith('0.0.0.0', 25575, undefined, 'status');
+    expect(mockSendRconCommand).toHaveBeenCalledWith('127.0.0.1', 25575, undefined, 'status');
   });
 
   it('should return 500 if RCON connection fails', async () => {
@@ -175,7 +175,7 @@ describe('POST /api/containers/:id/rcon', () => {
       .send({ command: '  status  ' });
 
     expect(res.status).toBe(200);
-    expect(mockSendRconCommand).toHaveBeenCalledWith('0.0.0.0', 25575, undefined, 'status');
+    expect(mockSendRconCommand).toHaveBeenCalledWith('127.0.0.1', 25575, undefined, 'status');
   });
 
   it('should return 500 if Docker inspect fails with non-404 error', async () => {

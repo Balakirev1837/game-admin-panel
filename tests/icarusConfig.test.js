@@ -20,9 +20,9 @@ const { parseIni, serializeIni, readConfig, writeConfig, validateConfig, readLau
 
 const TMP_DIR = path.join(__dirname, '__tmp_icarus_config__');
 
-// Helper to create a temp config directory for a container
+// Helper to create a temp config directory matching GAME_CONFIG_ROOT/<container>/Saved/Config/WindowsServer/
 function setupConfigDir(containerId, iniContent, envContent) {
-  const dir = path.join(TMP_DIR, containerId);
+  const dir = path.join(TMP_DIR, containerId, 'Saved', 'Config', 'WindowsServer');
   fs.mkdirSync(dir, { recursive: true });
   if (iniContent !== undefined) {
     fs.writeFileSync(path.join(dir, 'ServerSettings.ini'), iniContent, 'utf-8');
@@ -148,19 +148,16 @@ describe('icarusConfig - validation', () => {
   });
 });
 
-describe('icarusConfig - file read/write with ICARUS_CONFIG_DIR', () => {
+describe('icarusConfig - file read/write with GAME_CONFIG_ROOT', () => {
   const originalEnv = {};
 
   beforeAll(() => {
-    originalEnv.ICARUS_CONFIG_PATH = process.env.ICARUS_CONFIG_PATH;
-    originalEnv.ICARUS_CONFIG_DIR = process.env.ICARUS_CONFIG_DIR;
-    delete process.env.ICARUS_CONFIG_PATH;
-    process.env.ICARUS_CONFIG_DIR = TMP_DIR;
+    originalEnv.GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT;
+    process.env.GAME_CONFIG_ROOT = TMP_DIR;
   });
 
   afterAll(() => {
-    process.env.ICARUS_CONFIG_PATH = originalEnv.ICARUS_CONFIG_PATH;
-    process.env.ICARUS_CONFIG_DIR = originalEnv.ICARUS_CONFIG_DIR;
+    process.env.GAME_CONFIG_ROOT = originalEnv.GAME_CONFIG_ROOT;
     cleanupTmpDir();
   });
 
@@ -174,10 +171,12 @@ describe('icarusConfig - file read/write with ICARUS_CONFIG_DIR', () => {
     expect(config._sections['Settings']).toEqual({ ServerName: 'MyServer', MaxPlayers: '16' });
   });
 
-  it('should throw ENOENT for missing config file', () => {
+  it('should return empty config for missing config file', () => {
     // Don't create the file
     setupConfigDir('missing-container');
-    expect(() => readConfig('missing-container')).toThrow('Config file not found');
+    const config = readConfig('missing-container');
+    expect(config._root).toEqual({});
+    expect(config._sections).toEqual({});
   });
 
   it('should write a config file and read it back', () => {
@@ -228,27 +227,33 @@ describe('icarusConfig - file read/write with ICARUS_CONFIG_DIR', () => {
 
 describe('Config API endpoints', () => {
   const originalEnv = {};
+  const Docker = require('dockerode');
 
   beforeAll(() => {
-    originalEnv.ICARUS_CONFIG_PATH = process.env.ICARUS_CONFIG_PATH;
-    originalEnv.ICARUS_CONFIG_DIR = process.env.ICARUS_CONFIG_DIR;
-    delete process.env.ICARUS_CONFIG_PATH;
-    process.env.ICARUS_CONFIG_DIR = TMP_DIR;
+    originalEnv.GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT;
+    process.env.GAME_CONFIG_ROOT = TMP_DIR;
   });
 
   afterAll(() => {
-    process.env.ICARUS_CONFIG_PATH = originalEnv.ICARUS_CONFIG_PATH;
-    process.env.ICARUS_CONFIG_DIR = originalEnv.ICARUS_CONFIG_DIR;
+    process.env.GAME_CONFIG_ROOT = originalEnv.GAME_CONFIG_ROOT;
     cleanupTmpDir();
   });
 
   afterEach(() => {
     cleanupTmpDir();
+    jest.clearAllMocks();
   });
+
+  function mockContainerInspect(name) {
+    const mockInspect = jest.fn().mockResolvedValue({ Name: `/${name}`, State: {} });
+    Docker.__mockGetContainer.mockReturnValue({ inspect: mockInspect });
+    return mockInspect;
+  }
 
   describe('GET /api/containers/:id/config', () => {
     it('should return config as JSON', async () => {
       setupConfigDir('api-container', '[/Game/Settings]\nServerName=TestServer\nMaxPlayers=8\n');
+      mockContainerInspect('api-container');
 
       const res = await request(app).get('/api/containers/api-container/config');
 
@@ -259,18 +264,20 @@ describe('Config API endpoints', () => {
       });
     });
 
-    it('should return 404 if config file does not exist', async () => {
+    it('should return 200 with empty config if config file does not exist', async () => {
       setupConfigDir('missing-container');
+      mockContainerInspect('missing-container');
 
       const res = await request(app).get('/api/containers/missing-container/config');
 
-      expect(res.status).toBe(404);
-      expect(res.body).toHaveProperty('error');
-      expect(res.body.error).toContain('not found');
+      expect(res.status).toBe(200);
+      expect(res.body.config._sections).toEqual({});
+      expect(res.body.launchParams).toEqual({});
     });
 
     it('should include launch params in response', async () => {
       setupConfigDir('params-container', '[Settings]\nKey=Value\n', 'MODE=HARD\n');
+      mockContainerInspect('params-container');
 
       const res = await request(app).get('/api/containers/params-container/config');
 
@@ -282,6 +289,7 @@ describe('Config API endpoints', () => {
   describe('PUT /api/containers/:id/config', () => {
     it('should write config and return success', async () => {
       setupConfigDir('write-api-container', '[Settings]\nServerName=Old\n');
+      mockContainerInspect('write-api-container');
 
       const res = await request(app)
         .put('/api/containers/write-api-container/config')
@@ -294,6 +302,7 @@ describe('Config API endpoints', () => {
 
     it('should write config and launch params together', async () => {
       setupConfigDir('write-both-container', '[Settings]\nKey=Value\n');
+      mockContainerInspect('write-both-container');
 
       const res = await request(app)
         .put('/api/containers/write-both-container/config')

@@ -1,21 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_CONFIG_PATH = './config/ServerSettings.ini';
+const DEFAULT_GAME_ROOT = '/host-games';
+
+function getGameRoot() {
+  return process.env.GAME_CONFIG_ROOT || DEFAULT_GAME_ROOT;
+}
 
 /**
- * Get the config file path for a given container ID.
- * Uses ICARUS_CONFIG_PATH env var with './config/ServerSettings.ini' as default.
- * If ICARUS_CONFIG_DIR is set, resolves <dir>/<containerId>/ServerSettings.ini.
+ * Get the config file path for a given container.
+ * Uses GAME_CONFIG_ROOT / container-name / Saved/Config/WindowsServer/ServerSettings.ini.
  */
-function getConfigFilePath(containerId) {
-  if (process.env.ICARUS_CONFIG_PATH) {
-    return process.env.ICARUS_CONFIG_PATH;
-  }
-  if (process.env.ICARUS_CONFIG_DIR) {
-    return path.join(process.env.ICARUS_CONFIG_DIR, containerId, 'ServerSettings.ini');
-  }
-  return DEFAULT_CONFIG_PATH;
+function getConfigFilePath(containerName) {
+  return path.join(getGameRoot(), containerName, 'Saved', 'Config', 'WindowsServer', 'ServerSettings.ini');
 }
 
 /**
@@ -119,9 +116,7 @@ function readConfig(containerId) {
   const filePath = getConfigFilePath(containerId);
 
   if (!fs.existsSync(filePath)) {
-    const err = new Error(`Config file not found: ${filePath}`);
-    err.code = 'ENOENT';
-    throw err;
+    return { _sections: {}, _comments: {}, _root: {} };
   }
 
   const content = fs.readFileSync(filePath, 'utf-8');

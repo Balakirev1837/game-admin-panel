@@ -39,31 +39,33 @@ router.post('/:id/rcon', async (req, res) => {
   const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
   const DEFAULT_RCON_PORT = 25575;
 
-  let rconHost = '127.0.0.1';
+  // Resolve host: use container's name on game-network, fallback to 127.0.0.1
+  let rconHost = info.Name ? info.Name.replace(/^\//, '') : '127.0.0.1';
   let rconPort = null;
   let foundPort = false;
+
+  // Check game-network IPs first
+  const networks = (info.NetworkSettings && info.NetworkSettings.Networks) || {};
+  const gameNet = networks['game-network'];
+  if (gameNet && gameNet.IPAddress) {
+    rconHost = gameNet.IPAddress;
+  }
 
   // Try to find the default RCON port mapping first
   const rconPortKey = `${DEFAULT_RCON_PORT}/tcp`;
   if (ports[rconPortKey] && ports[rconPortKey].length > 0) {
     const binding = ports[rconPortKey][0];
-    rconHost = binding.HostIp || '127.0.0.1';
     rconPort = parseInt(binding.HostPort, 10);
     foundPort = true;
   }
 
-  // If default port not found, look for any port mapping that might be RCON
+  // If default port not found, look for game port 17777 (Icarus RCON)
   if (!foundPort) {
-    // Check if any port mapping exists; use the first one we find
-    // This is a fallback for containers that might expose RCON on a different port
     for (const [containerPort, bindings] of Object.entries(ports)) {
       if (bindings && bindings.length > 0) {
-        // Check if the private/container port is 25575
         const privatePort = parseInt(containerPort.split('/')[0], 10);
-        if (privatePort === DEFAULT_RCON_PORT) {
-          const binding = bindings[0];
-          rconHost = binding.HostIp || '127.0.0.1';
-          rconPort = parseInt(binding.HostPort, 10);
+        if (privatePort === DEFAULT_RCON_PORT || privatePort === 17777) {
+          rconPort = privatePort;
           foundPort = true;
           break;
         }

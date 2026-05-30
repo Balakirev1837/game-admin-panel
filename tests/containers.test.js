@@ -51,8 +51,11 @@ describe('GET /api/containers', () => {
       ports: [{ IP: '0.0.0.0', PrivatePort: 80, PublicPort: 8080, Type: 'tcp' }],
     });
 
-    // Verify listContainers was called with { all: true }
-    expect(Docker.__mockListContainers).toHaveBeenCalledWith({ all: true });
+    // Verify listContainers was called with all: true and the game label filter
+    expect(Docker.__mockListContainers).toHaveBeenCalledWith({
+      all: true,
+      filters: { label: ['game-admin-panel.enabled=true'] }
+    });
   });
 
   it('should include both running and stopped containers', async () => {

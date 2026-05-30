@@ -9,7 +9,10 @@ router.get('/', async (_req, res) => {
     return res.status(503).json({ error: 'Docker client is not available' });
   }
   try {
-    const containers = await docker.listContainers({ all: true });
+    const containers = await docker.listContainers({
+      all: true,
+      filters: { label: ['game-admin-panel.enabled=true'] }
+    });
     const result = containers.map((c) => ({
       id: c.Id,
       name: c.Names[0] ? c.Names[0].replace(/^\//, '') : '',

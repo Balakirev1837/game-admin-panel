@@ -142,6 +142,33 @@ function createRconPanel(containerId) {
   inputRow.appendChild(input);
   inputRow.appendChild(sendBtn);
 
+  // Quick commands
+  const quickRow = document.createElement('div');
+  quickRow.className = 'flex flex-wrap gap-2 mt-1';
+  
+  const quickCommands = [
+    { label: 'Resume Prospect', cmd: 'ResumeProspect', immediate: true },
+    { label: 'Load Prospect...', cmd: 'LoadProspect ' },
+    { label: 'Create Prospect...', cmd: 'CreateProspect ' },
+    { label: 'Save', cmd: 'Server.Save', immediate: true },
+    { label: 'Shutdown', cmd: 'Shutdown', immediate: true }
+  ];
+
+  quickCommands.forEach(qc => {
+    const btn = document.createElement('button');
+    btn.className = 'px-2 py-1 bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded text-xs text-gray-300 transition-colors';
+    btn.textContent = qc.label;
+    btn.addEventListener('click', () => {
+      if (qc.immediate) {
+        sendRconCommand(containerId, qc.cmd, output, session);
+      } else {
+        input.value = qc.cmd;
+        input.focus();
+      }
+    });
+    quickRow.appendChild(btn);
+  });
+
   // Wire up send
   function handleSend() {
     const cmd = input.value;
@@ -176,6 +203,7 @@ function createRconPanel(containerId) {
   });
 
   panel.appendChild(output);
+  panel.appendChild(quickRow);
   panel.appendChild(inputRow);
 
   return panel;

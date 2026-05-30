@@ -1,10 +1,8 @@
-# Dependencies
+# Game Admin Panel
+# See README.md for license and contributor information.
+
 node_modules/
-
-# Environment variables
 .env
-
-# Beads / Dolt files (added by bd init)
 .dolt/
 *.db
 .beads-credential-key
