@@ -1248,6 +1248,17 @@ prospectsModalCancel.addEventListener('click', closeProspectsModal);
 // Initial fetch
 fetchContainers();
 
+// Load version
+async function loadVersion() {
+  try {
+    const res = await fetch('/api/version');
+    const data = await res.json();
+    const el = document.getElementById('version-display');
+    if (el) el.textContent = 'v' + (data.version || '?');
+  } catch { /* ignore */ }
+}
+loadVersion();
+
 // Auto-refresh every 5 seconds
 setInterval(fetchContainers, 5000);
 

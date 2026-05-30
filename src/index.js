@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const { docker, verifyDockerConnection } = require('./services/docker');
 const containersRouter = require('./routes/containers');
 const configRouter = require('./routes/config');
@@ -17,6 +19,16 @@ app.use(express.static('public'));
 // Health check endpoint
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Version endpoint
+app.get('/api/version', (_req, res) => {
+  try {
+    const version = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf-8').trim();
+    res.json({ version });
+  } catch {
+    res.json({ version: 'unknown' });
+  }
 });
 
 // Mount container routes
