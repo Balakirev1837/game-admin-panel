@@ -527,6 +527,9 @@ function createLogsPanel(containerId) {
   panel.className = 'mt-2 pt-2 border-t border-gray-700';
 
   let currentTail = '200';
+  let aiEnabled = false;
+
+  fetch('/api/ai/status').then(r => r.json()).then(d => { aiEnabled = d.enabled; updateAiBtn(); }).catch(() => {});
 
   panel.innerHTML = `
     <div class="flex items-center gap-2 mb-2">
@@ -539,16 +542,27 @@ function createLogsPanel(containerId) {
       </select>
       <button class="logs-refresh-btn px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600">Refresh</button>
       <button class="logs-download-btn px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600">Download</button>
+      <button class="logs-ai-btn px-2 py-1 text-xs rounded bg-violet-700 text-gray-300 hover:bg-violet-600 hidden" disabled>Analyze with AI</button>
       <input type="text" class="logs-search bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-40" placeholder="Filter logs...">
       <span class="logs-count text-xs text-gray-500"></span>
     </div>
     <div class="logs-output bg-gray-950 rounded p-2 font-mono text-xs overflow-y-auto max-h-64 whitespace-pre-wrap break-all"></div>
+    <div class="ai-analysis-container"></div>
   `;
 
   const output = panel.querySelector('.logs-output');
   const searchInput = panel.querySelector('.logs-search');
   const countSpan = panel.querySelector('.logs-count');
+  const aiBtn = panel.querySelector('.logs-ai-btn');
+  const aiContainer = panel.querySelector('.ai-analysis-container');
   let allLogs = [];
+
+  function updateAiBtn() {
+    if (aiEnabled) {
+      aiBtn.classList.remove('hidden');
+      aiBtn.disabled = false;
+    }
+  }
 
   async function loadLogs() {
     output.textContent = 'Loading...';
@@ -592,6 +606,33 @@ function createLogsPanel(containerId) {
     URL.revokeObjectURL(a.href);
   });
   searchInput.addEventListener('input', renderFilteredLogs);
+
+  aiBtn.addEventListener('click', async () => {
+    if (aiBtn.disabled) return;
+    aiBtn.disabled = true;
+    aiBtn.textContent = 'Analyzing...';
+    aiContainer.innerHTML = '<div class="mt-2 p-3 bg-gray-900 rounded border border-gray-700 text-xs text-gray-400">AI is analyzing logs...</div>';
+
+    try {
+      const res = await fetch(`/api/ai/${containerId}/analyze-logs?tail=${currentTail}`, { method: 'POST' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const analysisHtml = data.analysis
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-violet-300">$1</strong>')
+        .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 rounded text-violet-200">$1</code>');
+      aiContainer.innerHTML = `<div class="mt-2 p-3 bg-gray-900 rounded border border-violet-800/50 text-xs text-gray-300 leading-relaxed"><div class="flex items-center gap-2 mb-2 pb-2 border-b border-gray-700"><span class="text-violet-400 font-medium">AI Log Analysis</span></div>${analysisHtml}</div>`;
+    } catch (err) {
+      aiContainer.innerHTML = `<div class="mt-2 p-3 bg-gray-900 rounded border border-red-800/50 text-xs text-red-400">Analysis failed: ${escapeHtml(err.message)}</div>`;
+    } finally {
+      aiBtn.disabled = false;
+      aiBtn.textContent = 'Analyze with AI';
+    }
+  });
 
   loadLogs();
   return panel;
@@ -670,9 +711,7 @@ function renderContainerCard(container) {
       <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
         Server Config
       </button>
-      <button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">
-        Game Data
-      </button>
+      ${GAME_DATA_TYPES[game] ? `<button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">Game Data</button>` : ''}
       ${prospectsBtnHtml}
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
@@ -689,15 +728,18 @@ function renderContainerCard(container) {
     openConfigEditor(this.dataset.containerId, this.dataset.containerName, this.dataset.containerState, game);
   });
 
-  card.querySelector('.gamedata-btn').addEventListener('click', function () {
-    const container = this.closest('[data-container-id]');
-    const dataEl = container.querySelector('.gamedata-container');
-    if (dataEl.innerHTML) {
-      dataEl.innerHTML = '';
-      return;
-    }
-    loadGameData(this.dataset.containerId, game, dataEl);
-  });
+  const gameDataBtn = card.querySelector('.gamedata-btn');
+  if (gameDataBtn) {
+    gameDataBtn.addEventListener('click', function () {
+      const container = this.closest('[data-container-id]');
+      const dataEl = container.querySelector('.gamedata-container');
+      if (dataEl.innerHTML) {
+        dataEl.innerHTML = '';
+        return;
+      }
+      loadGameData(this.dataset.containerId, game, dataEl);
+    });
+  }
 
   const prospectsBtn = card.querySelector('.prospects-btn');
   if (prospectsBtn) {
@@ -2231,7 +2273,9 @@ setInterval(fetchAllPlayers, 15000);
             } else if (event.action === 'start' && event.name) {
               showToast(`${event.name} started`, 'success');
             }
-          } catch {}
+    } catch (err) {
+      sections.push(`<div class="text-red-400"><span class="font-medium">${t.label}:</span> ${escapeHtml(err.message)}</div>`);
+    }
         }
         read();
       }).catch(() => setTimeout(connectEvents, 5000));

@@ -12,24 +12,34 @@ router.get('/:id/logs', async (req, res) => {
   const container = docker.getContainer(req.params.id);
 
   try {
+    const tailVal = tail === 'all' ? 'all' : Math.max(1, parseInt(tail, 10) || 500);
     const logStream = await container.logs({
       stdout: true,
       stderr: true,
-      tail: tail === 'all' ? 'all' : Math.max(1, parseInt(tail, 10) || 500),
+      tail: tailVal,
       timestamps: true,
     });
 
-    const chunks = [];
-    logStream.on('data', (chunk) => chunks.push(chunk));
+    let buf;
+    if (Buffer.isBuffer(logStream)) {
+      buf = logStream;
+    } else if (typeof logStream === 'string') {
+      buf = Buffer.from(logStream);
+    } else {
+      const chunks = [];
+      logStream.on('data', (chunk) => chunks.push(chunk));
 
-    await new Promise((resolve, reject) => {
-      logStream.on('end', resolve);
-      logStream.on('error', reject);
-    });
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          resolve();
+        }, 10000);
+        logStream.on('end', () => { clearTimeout(timeout); resolve(); });
+        logStream.on('error', (err) => { clearTimeout(timeout); reject(err); });
+      });
+      buf = Buffer.concat(chunks);
+    }
 
-    const buf = Buffer.concat(chunks);
     const lines = demuxDockerLogs(buf);
-
     return res.json({ logs: lines });
   } catch (err) {
     if (err.statusCode === 404) {
@@ -70,4 +80,4 @@ function demuxDockerLogs(buf) {
   return lines;
 }
 
-module.exports = router;
+module.exports = { router, demuxDockerLogs };

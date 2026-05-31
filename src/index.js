@@ -11,11 +11,12 @@ const rconRouter = require('./routes/rcon');
 const restRouter = require('./routes/rest');
 const prospectsRouter = require('./routes/prospects');
 const resourcesRouter = require('./routes/resources');
-const logsRouter = require('./routes/logs');
+const { router: logsRouter } = require('./routes/logs');
 const hostRouter = require('./routes/host');
 const playersRouter = require('./routes/players');
 const { router: eventsRouter } = require('./routes/events');
 const gameDataRouter = require('./routes/gameData');
+const aiRouter = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,9 @@ app.use('/api/events', authMiddleware);
 app.use('/api/events', eventsRouter);
 
 app.use('/api/containers', gameDataRouter);
+
+app.use('/api/ai', authMiddleware);
+app.use('/api/ai', aiRouter);
 
 app.use('/api/host', authMiddleware);
 app.use('/api/host', hostRouter);
