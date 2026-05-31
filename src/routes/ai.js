@@ -8,7 +8,7 @@ const router = express.Router();
 
 const AI_API_KEY = process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY || '';
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1';
-const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4o-mini';
+const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-4.1-mini';
 
 const SYSTEM_PROMPT = `You are a game server log analyst. When given server logs, you should:
 1. Identify any errors, warnings, or anomalies
