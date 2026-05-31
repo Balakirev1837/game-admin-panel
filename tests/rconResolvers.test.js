@@ -15,6 +15,13 @@ jest.mock('../src/services/rcon', () => ({
   sendRconCommand: mockSendRcon,
 }));
 
+const mockReadFileFromContainer = jest.fn();
+jest.mock('../src/services/containerFiles', () => ({
+  readFileFromContainer: mockReadFileFromContainer,
+  writeFileToContainer: jest.fn(),
+  execInContainer: jest.fn(),
+}));
+
 const app = require('../src/index');
 
 function makeInspect(game, envVars = {}, ports = {}, networks = {}) {
@@ -128,33 +135,26 @@ describe('Factorio RCON resolution', () => {
     mockGetContainer.mockReset();
     mockSendRcon.mockReset();
     mockSendRcon.mockResolvedValue('OK');
+    mockReadFileFromContainer.mockReset();
   });
 
   it('should use default port 27015', async () => {
-    jest.resetModules();
-    jest.doMock('../src/services/factorioConfig', () => ({
-      readConfig: jest.fn().mockReturnValue({ json: {} }),
-    }));
-    const testApp = require('../src/index');
+    mockReadFileFromContainer.mockResolvedValue(null);
 
     mockGetContainer.mockReturnValue({
       inspect: jest.fn().mockResolvedValue(makeInspect('factorio')),
     });
-    await request(testApp).post('/api/containers/abc/rcon').send({ command: '/players' });
+    await request(app).post('/api/containers/abc/rcon').send({ command: '/players' });
     expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 27015, undefined, '/players');
   });
 
-  it('should read rcon_password from factorio config', async () => {
-    jest.resetModules();
-    jest.doMock('../src/services/factorioConfig', () => ({
-      readConfig: jest.fn().mockReturnValue({ json: { rcon_password: 'fac-pass' } }),
-    }));
-    const testApp = require('../src/index');
+  it('should read rcon_password from container', async () => {
+    mockReadFileFromContainer.mockResolvedValue('fac-pass');
 
     mockGetContainer.mockReturnValue({
       inspect: jest.fn().mockResolvedValue(makeInspect('factorio')),
     });
-    await request(testApp).post('/api/containers/abc/rcon').send({ command: '/players' });
+    await request(app).post('/api/containers/abc/rcon').send({ command: '/players' });
     expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 27015, 'fac-pass', '/players');
   });
 });

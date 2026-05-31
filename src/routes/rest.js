@@ -1,6 +1,6 @@
 const express = require('express');
 const { docker } = require('../services/docker');
-const terrariaConfig = require('../services/terrariaConfig');
+const { readFileFromContainer } = require('../services/containerFiles');
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ async function resolveContainerGame(containerId) {
   }
 }
 
-function resolveTerrariaRest(info, containerName) {
+async function resolveTerrariaRest(info, containerName) {
   const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
   let restHost = '127.0.0.1';
   let restPort = 7878;
@@ -30,9 +30,20 @@ function resolveTerrariaRest(info, containerName) {
     restHost = gameNet.IPAddress;
   }
 
-  const config = terrariaConfig.readConfig(containerName);
-  if (config.json.RestApiPort) {
-    restPort = config.json.RestApiPort;
+  let config = {};
+  try {
+    const configPaths = ['/tshock/config.json', '/root/.local/share/Terraria/tshock/config.json'];
+    for (const p of configPaths) {
+      const data = await readFileFromContainer(info.Id, p);
+      if (data) {
+        config = JSON.parse(data);
+        break;
+      }
+    }
+  } catch {}
+
+  if (config.RestApiPort) {
+    restPort = config.RestApiPort;
   }
 
   for (const [containerPort, bindings] of Object.entries(ports)) {
@@ -43,7 +54,12 @@ function resolveTerrariaRest(info, containerName) {
     }
   }
 
-  const token = config.json.ApplicationRestTokens || undefined;
+  let token = undefined;
+  if (config.ApplicationRestTokens) {
+    token = Array.isArray(config.ApplicationRestTokens)
+      ? config.ApplicationRestTokens[0]
+      : config.ApplicationRestTokens;
+  }
 
   return { restHost, restPort, foundPort, token };
 }
@@ -81,7 +97,7 @@ router.post('/:id/rest', async (req, res) => {
   }
 
   const containerName = info.Name.replace(/^\//, '');
-  const restResult = resolveTerrariaRest(info, containerName);
+  const restResult = await resolveTerrariaRest(info, containerName);
 
   if (!restResult.foundPort) {
     return res.status(503).json({ success: false, message: 'Container has no REST port mapped' });

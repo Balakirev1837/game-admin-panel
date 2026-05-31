@@ -94,12 +94,12 @@ describe('cs2Config - env file read/write', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('should only write known CS2 keys', () => {
+  it('should preserve all existing keys on write', () => {
     setupConfigDir('cs2');
-    writeEnvFile('cs2', { env: { CS2_SERVERNAME: 'Test', MALICIOUS_KEY: 'bad' } });
+    writeEnvFile('cs2', { env: { CS2_SERVERNAME: 'Test', EXTRA_KEY: 'preserved' } });
     const result = readEnvFile('cs2');
     expect(result.env.CS2_SERVERNAME).toBe('Test');
-    expect(result.env.MALICIOUS_KEY).toBeUndefined();
+    expect(result.env.EXTRA_KEY).toBe('preserved');
   });
 
   it('should have CS2_ENV_FILEDS defined', () => {

@@ -1,6 +1,7 @@
 const express = require('express');
 const { docker } = require('../services/docker');
 const { sendRconCommand } = require('../services/rcon');
+const { readFileFromContainer } = require('../services/containerFiles');
 
 const router = express.Router();
 
@@ -133,7 +134,7 @@ function resolveMinecraftRcon(info) {
   return { rconHost, rconPort, foundPort, rconPassword };
 }
 
-function resolveFactorioRcon(info, containerName) {
+async function resolveFactorioRcon(info, containerName) {
   const ports = (info.NetworkSettings && info.NetworkSettings.Ports) || {};
   let rconHost = '127.0.0.1';
   let rconPort = 27015;
@@ -158,10 +159,11 @@ function resolveFactorioRcon(info, containerName) {
     }
   }
 
-  // Read password from factorioConfig
-  const factorioConfig = require('../services/factorioConfig');
-  const config = factorioConfig.readConfig(containerName);
-  const rconPassword = config.json.rcon_password || undefined;
+  let rconPassword = undefined;
+  try {
+    const rconData = await readFileFromContainer(info.Id, '/factorio/config/rconpw');
+    if (rconData) rconPassword = rconData.trim();
+  } catch {}
 
   return { rconHost, rconPort, foundPort, rconPassword };
 }
@@ -201,7 +203,7 @@ router.post('/:id/rcon', async (req, res) => {
     rconResult = resolveMinecraftRcon(info);
   } else if (game === 'factorio') {
     const containerName = info.Name.replace(/^\//, '');
-    rconResult = resolveFactorioRcon(info, containerName);
+    rconResult = await resolveFactorioRcon(info, containerName);
   } else {
     rconResult = resolveIcarusRcon(info);
   }

@@ -50,6 +50,15 @@ router.get('/:id/logs', async (req, res) => {
 });
 
 function demuxDockerLogs(buf) {
+  if (buf.length === 0) return [];
+
+  const isFramed = (buf[0] === 1 || buf[0] === 2) && buf.length >= 8 &&
+    buf.readUInt32BE(4) <= buf.length;
+
+  if (!isFramed) {
+    return parsePlainTextLogs(buf.toString('utf-8'));
+  }
+
   const lines = [];
   let offset = 0;
 
@@ -77,6 +86,28 @@ function demuxDockerLogs(buf) {
     lines.push({ stream: streamType, timestamp, text });
   }
 
+  if (lines.length === 0 && buf.length > 0) {
+    return parsePlainTextLogs(buf.toString('utf-8'));
+  }
+
+  return lines;
+}
+
+function parsePlainTextLogs(text) {
+  const lines = [];
+  for (const raw of text.split('\n')) {
+    if (raw.trim() === '') continue;
+    let timestamp = null;
+    let line = raw;
+    const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\s+/);
+    if (tsMatch) {
+      timestamp = tsMatch[1];
+      line = line.substring(tsMatch[0].length);
+    }
+    if (line.trim()) {
+      lines.push({ stream: 'stdout', timestamp, text: line });
+    }
+  }
   return lines;
 }
 

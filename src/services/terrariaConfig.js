@@ -1,11 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const DEFAULT_GAME_ROOT = '/host-games';
-
-function getGameRoot() {
-  return process.env.GAME_CONFIG_ROOT || DEFAULT_GAME_ROOT;
-}
+const { readFileFromContainer, writeFileToContainer } = require('./containerFiles');
 
 const TERRARIA_CONFIG_FIELDS = [
   { key: 'ServerName', label: 'Server Name', type: 'text', placeholder: 'Terraria Server', help: 'Name of the server' },
@@ -17,23 +10,35 @@ const TERRARIA_CONFIG_FIELDS = [
   { key: 'ApplicationRestTokens', label: 'REST API Token', type: 'text', placeholder: '', help: 'Token for REST API access' },
 ];
 
-function getConfigFilePath(containerName) {
-  return path.join(getGameRoot(), containerName, 'tshock', 'config.json');
+const CONFIG_PATHS = [
+  '/tshock/config.json',
+  '/root/.local/share/Terraria/tshock/config.json',
+  '/root/.local/share/Terraria/Worlds/tshock/config.json',
+];
+
+async function findConfigPath(containerId) {
+  for (const p of CONFIG_PATHS) {
+    const data = await readFileFromContainer(containerId, p);
+    if (data !== null) return { path: p, data };
+  }
+  return { path: CONFIG_PATHS[0], data: null };
 }
 
-function readConfig(containerName) {
-  const filePath = getConfigFilePath(containerName);
-  
-  let settings = {};
-  if (fs.existsSync(filePath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    } catch (err) {
-      console.error(`Failed to parse Terraria config for ${containerName}:`, err.message);
-    }
+async function readConfig(containerNameOrId, info) {
+  if (!info || !info.State || info.State.Running !== true) {
+    return { json: {}, _stopped: true };
   }
 
-  // Extract the first REST token for the UI
+  const containerId = info.Id || containerNameOrId;
+  let settings = {};
+
+  const { data } = await findConfigPath(containerId);
+  if (data) {
+    try {
+      settings = JSON.parse(data);
+    } catch {}
+  }
+
   if (settings.ApplicationRestTokens && Array.isArray(settings.ApplicationRestTokens) && settings.ApplicationRestTokens.length > 0) {
     settings.ApplicationRestTokens = settings.ApplicationRestTokens[0];
   } else {
@@ -63,7 +68,7 @@ function validateConfigData(data) {
   return { valid: errors.length === 0, errors };
 }
 
-function writeConfig(containerName, data) {
+async function writeConfig(containerNameOrId, data, info) {
   const validation = validateConfigData(data);
   if (!validation.valid) {
     const err = new Error(`Invalid config: ${validation.errors.join(', ')}`);
@@ -71,15 +76,13 @@ function writeConfig(containerName, data) {
     throw err;
   }
 
-  const filePath = getConfigFilePath(containerName);
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!info || !info.State || info.State.Running !== true) {
+    throw new Error('Container must be running to write Terraria config');
   }
 
+  const containerId = info.Id || containerNameOrId;
   let merged = data.json || {};
 
-  // Handle REST token array
   if (merged.ApplicationRestTokens !== undefined) {
     if (merged.ApplicationRestTokens.trim() === '') {
       merged.ApplicationRestTokens = [];
@@ -88,14 +91,12 @@ function writeConfig(containerName, data) {
     }
   }
 
-  // Convert boolean strings to actual booleans for JSON
   const booleanFields = ['RestApiEnabled'];
   for (const field of booleanFields) {
     if (merged[field] === 'true') merged[field] = true;
     if (merged[field] === 'false') merged[field] = false;
   }
 
-  // Convert number strings to actual numbers
   const numberFields = ['ServerPort', 'MaxSlots', 'RestApiPort'];
   for (const field of numberFields) {
     if (typeof merged[field] === 'string') {
@@ -103,18 +104,17 @@ function writeConfig(containerName, data) {
     }
   }
 
-  if (fs.existsSync(filePath)) {
+  const { path: configPath, data: existingRaw } = await findConfigPath(containerId);
+  if (existingRaw) {
     try {
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const existing = JSON.parse(existingRaw);
       merged = { ...existing, ...merged };
-    } catch (err) {
-      // Ignore parse errors on existing file, just overwrite
-    }
+    } catch {}
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
+  await writeFileToContainer(containerId, configPath, JSON.stringify(merged, null, 2));
 
-  return readConfig(containerName);
+  return readConfig(containerNameOrId, info);
 }
 
 module.exports = {

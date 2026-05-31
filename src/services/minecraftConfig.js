@@ -28,8 +28,8 @@ function getEnvFilePath(containerName) {
   return path.join(getGameRoot(), containerName, '.env');
 }
 
-function readEnvFile(containerName) {
-  const filePath = getEnvFilePath(containerName);
+function readEnvFile(containerName, envPath) {
+  const filePath = envPath || getEnvFilePath(containerName);
   const params = {};
 
   if (fs.existsSync(filePath)) {
@@ -68,7 +68,7 @@ function validateEnvData(data) {
   return { valid: errors.length === 0, errors };
 }
 
-function writeEnvFile(containerName, data) {
+function writeEnvFile(containerName, data, envPath) {
   const validation = validateEnvData(data);
   if (!validation.valid) {
     const err = new Error(`Invalid config: ${validation.errors.join(', ')}`);
@@ -76,7 +76,7 @@ function writeEnvFile(containerName, data) {
     throw err;
   }
 
-  const filePath = getEnvFilePath(containerName);
+  const filePath = envPath || getEnvFilePath(containerName);
   const dir = path.dirname(filePath);
 
   if (!fs.existsSync(dir)) {
@@ -86,16 +86,13 @@ function writeEnvFile(containerName, data) {
   let merged = data.env || {};
 
   if (fs.existsSync(filePath)) {
-    const existing = readEnvFile(containerName);
+    const existing = readEnvFile(containerName, filePath);
     merged = { ...existing.env, ...merged };
   }
 
-  const knownKeys = new Set(MINECRAFT_ENV_FIELDS.map(f => f.key));
   const lines = [];
   for (const [key, value] of Object.entries(merged)) {
-    if (knownKeys.has(key)) {
-      lines.push(`${key}=${value}`);
-    }
+    lines.push(`${key}=${value}`);
   }
 
   fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');

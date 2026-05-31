@@ -9,36 +9,54 @@ const { docker } = require('../services/docker');
 
 const router = express.Router();
 
+const GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT || '/host-games';
+
 async function resolveContainerInfo(containerId) {
   try {
     const container = docker.getContainer(containerId);
     const info = await container.inspect();
-    return {
-      name: info.Name.replace(/^\//, ''),
-      game: (info.Config && info.Config.Labels && info.Config.Labels['game-admin-panel.game']) || 'icarus',
-    };
+    const labels = (info.Config && info.Config.Labels) || {};
+    const game = labels['game-admin-panel.game'] || 'icarus';
+    const name = info.Name.replace(/^\//, '');
+
+    let composeDir = null;
+    const composeWorkingDir = labels['com.docker.compose.project.working_dir'];
+    if (composeWorkingDir) {
+      composeDir = composeWorkingDir.replace(/^\/home\/[^/]+\/Docker\/games/, GAME_CONFIG_ROOT);
+    }
+
+    return { name, game, info, composeDir };
   } catch {
-    return { name: null, game: 'icarus' };
+    return { name: null, game: 'icarus', info: null, composeDir: null };
   }
+}
+
+function resolveEnvPath(containerName, composeDir) {
+  if (composeDir) {
+    return require('path').join(composeDir, '.env');
+  }
+  return cs2Config.getEnvFilePath(containerName);
 }
 
 router.get('/:id/config', async (req, res) => {
   const { id } = req.params;
   try {
-    const { name, game } = await resolveContainerInfo(id);
+    const { name, game, info, composeDir } = await resolveContainerInfo(id);
     const containerName = name || id;
 
     if (game === 'cs2') {
-      const config = cs2Config.readEnvFile(containerName);
+      const envPath = resolveEnvPath(containerName, composeDir);
+      const config = cs2Config.readEnvFile(containerName, envPath);
       return res.json({ config, game });
     } else if (game === 'minecraft') {
-      const config = minecraftConfig.readEnvFile(containerName);
+      const envPath = resolveEnvPath(containerName, composeDir);
+      const config = minecraftConfig.readEnvFile(containerName, envPath);
       return res.json({ config, game });
     } else if (game === 'factorio') {
-      const config = factorioConfig.readConfig(containerName);
+      const config = await factorioConfig.readConfig(containerName, info);
       return res.json({ config, game });
     } else if (game === 'terraria') {
-      const config = terrariaConfig.readConfig(containerName);
+      const config = await terrariaConfig.readConfig(containerName, info);
       return res.json({ config, game });
     }
 
@@ -59,7 +77,7 @@ router.put('/:id/config', async (req, res) => {
       return res.status(400).json({ error: 'Request body must include a config object' });
     }
 
-    const { name, game } = await resolveContainerInfo(id);
+    const { name, game, info, composeDir } = await resolveContainerInfo(id);
     const containerName = name || id;
 
     backup.createBackup(containerName, game);
@@ -69,28 +87,30 @@ router.put('/:id/config', async (req, res) => {
       if (!validation.valid) {
         return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
       }
-      const written = cs2Config.writeEnvFile(containerName, config);
+      const envPath = resolveEnvPath(containerName, composeDir);
+      const written = cs2Config.writeEnvFile(containerName, config, envPath);
       return res.json({ success: true, config: written, game });
     } else if (game === 'minecraft') {
       const validation = minecraftConfig.validateEnvData(config);
       if (!validation.valid) {
         return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
       }
-      const written = minecraftConfig.writeEnvFile(containerName, config);
+      const envPath = resolveEnvPath(containerName, composeDir);
+      const written = minecraftConfig.writeEnvFile(containerName, config, envPath);
       return res.json({ success: true, config: written, game });
     } else if (game === 'factorio') {
       const validation = factorioConfig.validateConfigData(config);
       if (!validation.valid) {
         return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
       }
-      const written = factorioConfig.writeConfig(containerName, config);
+      const written = await factorioConfig.writeConfig(containerName, config, info);
       return res.json({ success: true, config: written, game });
     } else if (game === 'terraria') {
       const validation = terrariaConfig.validateConfigData(config);
       if (!validation.valid) {
         return res.status(400).json({ error: `Validation failed: ${validation.errors.join(', ')}` });
       }
-      const written = terrariaConfig.writeConfig(containerName, config);
+      const written = await terrariaConfig.writeConfig(containerName, config, info);
       return res.json({ success: true, config: written, game });
     }
 

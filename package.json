@@ -16,7 +16,8 @@
     "dockerode": "^5.0.0",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "srcds-rcon": "^2.2.1"
+    "srcds-rcon": "^2.2.1",
+    "tar": "^7.5.15"
   },
   "devDependencies": {
     "jest": "^30.4.2",

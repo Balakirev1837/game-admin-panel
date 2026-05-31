@@ -1,11 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const DEFAULT_GAME_ROOT = '/host-games';
-
-function getGameRoot() {
-  return process.env.GAME_CONFIG_ROOT || DEFAULT_GAME_ROOT;
-}
+const { readFileFromContainer, writeFileToContainer } = require('./containerFiles');
 
 const FACTORIO_CONFIG_FIELDS = [
   { key: 'name', label: 'Server Name', type: 'text', placeholder: 'Factorio Server', help: 'Name of the server' },
@@ -20,37 +13,33 @@ const FACTORIO_CONFIG_FIELDS = [
   { key: 'rcon_password', label: 'RCON Password', type: 'text', placeholder: '', help: 'Password for remote console (saved to rconpw file)' },
 ];
 
-function getConfigDirPath(containerName) {
-  return path.join(getGameRoot(), containerName, 'config');
-}
+async function readConfig(containerNameOrId, info) {
+  if (!info || !info.State || info.State.Running !== true) {
+    return { json: {}, _stopped: true };
+  }
 
-function readConfig(containerName) {
-  const dir = getConfigDirPath(containerName);
-  const settingsPath = path.join(dir, 'server-settings.json');
-  const rconPath = path.join(dir, 'rconpw');
-  
+  const containerId = info.Id || containerNameOrId;
   let settings = {};
-  if (fs.existsSync(settingsPath)) {
+
+  const settingsData = await readFileFromContainer(containerId, '/factorio/config/server-settings.json');
+  if (settingsData) {
     try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    } catch (err) {
-      console.error(`Failed to parse Factorio config for ${containerName}:`, err.message);
-    }
+      settings = JSON.parse(settingsData);
+    } catch {}
   }
 
   let rconPassword = '';
-  if (fs.existsSync(rconPath)) {
-    rconPassword = fs.readFileSync(rconPath, 'utf-8').trim();
+  const rconData = await readFileFromContainer(containerId, '/factorio/config/rconpw');
+  if (rconData) {
+    rconPassword = rconData.trim();
   }
 
-  // Flatten visibility for the UI
   if (settings.visibility) {
     settings['visibility.public'] = settings.visibility.public;
     settings['visibility.lan'] = settings.visibility.lan;
     delete settings.visibility;
   }
 
-  // Add rcon password to the config object for the UI
   settings.rcon_password = rconPassword;
 
   return { json: settings };
@@ -76,7 +65,7 @@ function validateConfigData(data) {
   return { valid: errors.length === 0, errors };
 }
 
-function writeConfig(containerName, data) {
+async function writeConfig(containerNameOrId, data, info) {
   const validation = validateConfigData(data);
   if (!validation.valid) {
     const err = new Error(`Invalid config: ${validation.errors.join(', ')}`);
@@ -84,21 +73,17 @@ function writeConfig(containerName, data) {
     throw err;
   }
 
-  const dir = getConfigDirPath(containerName);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!info || !info.State || info.State.Running !== true) {
+    throw new Error('Container must be running to write Factorio config');
   }
 
-  const settingsPath = path.join(dir, 'server-settings.json');
-  const rconPath = path.join(dir, 'rconpw');
+  const containerId = info.Id || containerNameOrId;
 
   let merged = data.json || {};
 
-  // Extract rcon password
   const rconPassword = merged.rcon_password;
   delete merged.rcon_password;
 
-  // Unflatten visibility
   if (merged['visibility.public'] !== undefined || merged['visibility.lan'] !== undefined) {
     merged.visibility = {
       public: merged['visibility.public'] === 'true' || merged['visibility.public'] === true,
@@ -108,35 +93,31 @@ function writeConfig(containerName, data) {
     delete merged['visibility.lan'];
   }
 
-  // Convert boolean strings to actual booleans for JSON
   const booleanFields = ['require_user_verification', 'auto_pause', 'non_blocking_saving'];
   for (const field of booleanFields) {
     if (merged[field] === 'true') merged[field] = true;
     if (merged[field] === 'false') merged[field] = false;
   }
 
-  // Convert number strings to actual numbers
   if (typeof merged.max_players === 'string') {
     merged.max_players = parseInt(merged.max_players, 10);
   }
 
-  if (fs.existsSync(settingsPath)) {
+  const existingData = await readFileFromContainer(containerId, '/factorio/config/server-settings.json');
+  if (existingData) {
     try {
-      const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const existing = JSON.parse(existingData);
       merged = { ...existing, ...merged };
-    } catch (err) {
-      // Ignore parse errors on existing file, just overwrite
-    }
+    } catch {}
   }
 
-  fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2), 'utf-8');
+  await writeFileToContainer(containerId, '/factorio/config/server-settings.json', JSON.stringify(merged, null, 2));
 
   if (rconPassword !== undefined) {
-    fs.writeFileSync(rconPath, rconPassword, 'utf-8');
+    await writeFileToContainer(containerId, '/factorio/config/rconpw', rconPassword);
   }
 
-  // Re-read to return the flattened format expected by the UI
-  return readConfig(containerName);
+  return readConfig(containerNameOrId, info);
 }
 
 module.exports = {

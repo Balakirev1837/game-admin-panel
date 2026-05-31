@@ -94,12 +94,12 @@ describe('minecraftConfig - env file read/write', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('should only write known Minecraft keys', () => {
+  it('should preserve all existing keys on write', () => {
     setupConfigDir('minecraft');
-    writeEnvFile('minecraft', { env: { MOTD: 'Test', MALICIOUS_KEY: 'bad' } });
+    writeEnvFile('minecraft', { env: { MOTD: 'Test', EXTRA_KEY: 'preserved' } });
     const result = readEnvFile('minecraft');
     expect(result.env.MOTD).toBe('Test');
-    expect(result.env.MALICIOUS_KEY).toBeUndefined();
+    expect(result.env.EXTRA_KEY).toBe('preserved');
   });
 
   it('should have MINECRAFT_ENV_FIELDS defined', () => {

@@ -1,6 +1,5 @@
 const request = require('supertest');
 
-// Mock dockerode before requiring the app
 const mockInspect = jest.fn();
 const mockGetContainer = jest.fn(() => ({ inspect: mockInspect }));
 
@@ -11,13 +10,13 @@ jest.mock('dockerode', () => {
   }));
 });
 
-// Mock terrariaConfig
-const mockReadConfig = jest.fn();
-jest.mock('../src/services/terrariaConfig', () => ({
-  readConfig: mockReadConfig,
+const mockReadFileFromContainer = jest.fn();
+jest.mock('../src/services/containerFiles', () => ({
+  readFileFromContainer: mockReadFileFromContainer,
+  writeFileToContainer: jest.fn(),
+  execInContainer: jest.fn(),
 }));
 
-// Mock global fetch
 global.fetch = jest.fn();
 
 const app = require('../src/index');
@@ -26,7 +25,7 @@ describe('POST /api/containers/:id/rest', () => {
   beforeEach(() => {
     mockGetContainer.mockReset();
     mockInspect.mockReset();
-    mockReadConfig.mockReset();
+    mockReadFileFromContainer.mockReset();
     global.fetch.mockReset();
   });
 
@@ -102,6 +101,7 @@ describe('POST /api/containers/:id/rest', () => {
     mockGetContainer.mockReturnValue({ inspect: mockInspect });
     mockInspect.mockResolvedValue({
       Name: '/terraria',
+      Id: 'ter-id',
       State: { Running: true },
       Config: { Labels: { 'game-admin-panel.game': 'terraria' } },
       NetworkSettings: {
@@ -110,7 +110,7 @@ describe('POST /api/containers/:id/rest', () => {
         },
       },
     });
-    mockReadConfig.mockReturnValue({ json: {} });
+    mockReadFileFromContainer.mockResolvedValue(JSON.stringify({ ApplicationRestTokens: [] }));
 
     const res = await request(app)
       .post('/api/containers/abc123/rest')
@@ -125,6 +125,7 @@ describe('POST /api/containers/:id/rest', () => {
     mockGetContainer.mockReturnValue({ inspect: mockInspect });
     mockInspect.mockResolvedValue({
       Name: '/terraria',
+      Id: 'ter-id',
       State: { Running: true },
       Config: { Labels: { 'game-admin-panel.game': 'terraria' } },
       NetworkSettings: {
@@ -133,8 +134,8 @@ describe('POST /api/containers/:id/rest', () => {
         },
       },
     });
-    mockReadConfig.mockReturnValue({ json: { ApplicationRestTokens: 'secret' } });
-    
+    mockReadFileFromContainer.mockResolvedValue(JSON.stringify({ ApplicationRestTokens: ['secret'] }));
+
     global.fetch.mockResolvedValue({
       json: jest.fn().mockResolvedValue({ status: '200', response: ['players: 0'] })
     });
@@ -152,6 +153,7 @@ describe('POST /api/containers/:id/rest', () => {
     mockGetContainer.mockReturnValue({ inspect: mockInspect });
     mockInspect.mockResolvedValue({
       Name: '/terraria',
+      Id: 'ter-id',
       State: { Running: true },
       Config: { Labels: { 'game-admin-panel.game': 'terraria' } },
       NetworkSettings: {
@@ -160,8 +162,8 @@ describe('POST /api/containers/:id/rest', () => {
         },
       },
     });
-    mockReadConfig.mockReturnValue({ json: { ApplicationRestTokens: 'secret' } });
-    
+    mockReadFileFromContainer.mockResolvedValue(JSON.stringify({ ApplicationRestTokens: ['secret'] }));
+
     global.fetch.mockResolvedValue({
       json: jest.fn().mockResolvedValue({ status: '403', error: 'Invalid token' })
     });
