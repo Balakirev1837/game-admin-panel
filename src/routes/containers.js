@@ -72,6 +72,8 @@ router.get('/', async (_req, res) => {
         base.oom_killed = state.OOMKilled || false;
         base.error = state.Error || null;
         base.restart_policy = (info.HostConfig && info.HostConfig.RestartPolicy && info.HostConfig.RestartPolicy.Name) || null;
+        base.image_digest = info.Image || null;
+        base.image_created = (info.Config && info.Config.Image) || null;
 
         if (state.Health) {
           base.health = {
@@ -111,5 +113,38 @@ router.post('/:id/stop', async (req, res) => {
 router.post('/:id/restart', async (req, res) => {
   await handleContainerAction(req, res, 'restart', 'Container restarted');
 });
+
+router.get('/:id/image', async (req, res) => {
+  if (!docker) {
+    return res.status(503).json({ error: 'Docker client is not available' });
+  }
+  try {
+    const container = docker.getContainer(req.params.id);
+    const info = await container.inspect();
+    const imageId = info.Image;
+    const image = docker.getImage(imageId);
+    const imageInfo = await image.inspect();
+    return res.json({
+      id: imageInfo.Id,
+      repo_tags: imageInfo.RepoTags || [],
+      created: imageInfo.Created || null,
+      size: imageInfo.Size || 0,
+      size_human: formatBytes(imageInfo.Size || 0),
+      digest: imageInfo.Id,
+    });
+  } catch (err) {
+    if (err.statusCode === 404) {
+      return res.status(404).json({ error: 'Container or image not found' });
+    }
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
 
 module.exports = router;

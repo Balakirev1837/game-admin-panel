@@ -577,10 +577,6 @@ function createLogsPanel(containerId) {
     output.scrollTop = output.scrollHeight;
   }
 
-  function escapeHtml(text) {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
   panel.querySelector('.logs-tail-select').addEventListener('change', function () {
     currentTail = this.value;
     loadLogs();
@@ -614,34 +610,6 @@ function showToast(message, type) {
 }
 
 // ===================== Container list =====================
-
-function statusColor(state) {
-  switch (state) {
-    case 'running':
-      return 'bg-green-500';
-    case 'exited':
-    case 'dead':
-      return 'bg-red-500';
-    case 'paused':
-      return 'bg-yellow-500';
-    case 'restarting':
-      return 'bg-blue-500';
-    default:
-      return 'bg-gray-500';
-  }
-}
-
-function formatPorts(ports) {
-  if (!ports || ports.length === 0) return 'None';
-  return ports
-    .map((p) => {
-      if (p.PublicPort) {
-        return `${p.PublicPort}->${p.PrivatePort}/${p.Type}`;
-      }
-      return `${p.PrivatePort}/${p.Type}`;
-    })
-    .join(', ');
-}
 
 function renderContainerCard(container) {
   const badgeColor = statusColor(container.state);
@@ -705,6 +673,8 @@ function renderContainerCard(container) {
       ${prospectsBtnHtml}
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
+    </div>
+    <div class="players-container ${container.state === 'running' ? '' : 'hidden'}">
     </div>
     <div class="rcon-container"></div>
     <div class="logs-container"></div>
@@ -879,6 +849,7 @@ function renderContainers(containers) {
       serverList.appendChild(card);
       if (container.state === 'running') {
         fetchResources(container.id);
+        fetchPlayers(container.id);
       }
     }
   });
@@ -936,8 +907,18 @@ function updateCard(container) {
       resContainer.classList.remove('hidden');
     } else {
       resContainer.classList.add('hidden');
-      resContainer.dataset.loaded = '';  // reset so it re-inits on next start
+      resContainer.dataset.loaded = '';
       resContainer.innerHTML = '';
+    }
+  }
+
+  const playersContainer = card.querySelector('.players-container');
+  if (playersContainer) {
+    if (container.state === 'running') {
+      playersContainer.classList.remove('hidden');
+    } else {
+      playersContainer.classList.add('hidden');
+      playersContainer.innerHTML = '';
     }
   }
 }
@@ -964,13 +945,46 @@ async function fetchContainers() {
   }
 }
 
-// ===================== Resource Monitor =====================
+// ===================== Player List =====================
 
-function memoryBarColor(percent) {
-  if (percent > 80) return 'bg-red-500';
-  if (percent > 60) return 'bg-yellow-500';
-  return 'bg-green-500';
+async function fetchPlayers(containerId) {
+  const container = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (!container) return;
+  const el = container.querySelector('.players-container');
+  if (!el || el.classList.contains('hidden')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/${containerId}/players`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const players = data.players || [];
+    if (players.length === 0) {
+      el.innerHTML = '<div class="mt-1 pt-1 border-t border-gray-700 text-xs text-gray-600">No players connected</div>';
+    } else {
+      el.innerHTML = `
+        <div class="mt-1 pt-1 border-t border-gray-700 text-xs">
+          <div class="flex justify-between text-gray-400 mb-1">
+            <span>Players (${players.length})</span>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            ${players.map(p => `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-700 text-gray-300">${escapeHtml(p.name)}${p.ping ? ' <span class="text-gray-500 ml-1">' + p.ping + 'ms</span>' : ''}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+  } catch { /* ignore */ }
 }
+
+function fetchAllPlayers() {
+  document.querySelectorAll('[data-container-id]').forEach(card => {
+    const el = card.querySelector('.players-container');
+    if (el && !el.classList.contains('hidden')) {
+      fetchPlayers(card.dataset.containerId);
+    }
+  });
+}
+
+// ===================== Resource Monitor =====================
 
 function renderResources(containerId, resources) {
   const container = document.querySelector(`[data-container-id="${containerId}"]`);
@@ -2099,3 +2113,4 @@ fetchHostStats();
 setInterval(fetchContainers, 5000);
 setInterval(fetchAllResources, 10000);
 setInterval(fetchHostStats, 10000);
+setInterval(fetchAllPlayers, 15000);
