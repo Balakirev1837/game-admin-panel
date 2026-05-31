@@ -14,6 +14,8 @@ const resourcesRouter = require('./routes/resources');
 const logsRouter = require('./routes/logs');
 const hostRouter = require('./routes/host');
 const playersRouter = require('./routes/players');
+const { router: eventsRouter } = require('./routes/events');
+const gameDataRouter = require('./routes/gameData');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +48,11 @@ app.use('/api/containers', prospectsRouter);
 app.use('/api/containers', resourcesRouter);
 app.use('/api/containers', logsRouter);
 app.use('/api/containers', playersRouter);
+
+app.use('/api/events', authMiddleware);
+app.use('/api/events', eventsRouter);
+
+app.use('/api/containers', gameDataRouter);
 
 app.use('/api/host', authMiddleware);
 app.use('/api/host', hostRouter);

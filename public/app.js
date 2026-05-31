@@ -670,6 +670,9 @@ function renderContainerCard(container) {
       <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
         Server Config
       </button>
+      <button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">
+        Game Data
+      </button>
       ${prospectsBtnHtml}
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
@@ -678,6 +681,7 @@ function renderContainerCard(container) {
     </div>
     <div class="rcon-container"></div>
     <div class="logs-container"></div>
+    <div class="gamedata-container"></div>
   `;
 
   // Attach event listener for config button
@@ -685,7 +689,16 @@ function renderContainerCard(container) {
     openConfigEditor(this.dataset.containerId, this.dataset.containerName, this.dataset.containerState, game);
   });
 
-  // Attach event listener for prospects button (Icarus only)
+  card.querySelector('.gamedata-btn').addEventListener('click', function () {
+    const container = this.closest('[data-container-id]');
+    const dataEl = container.querySelector('.gamedata-container');
+    if (dataEl.innerHTML) {
+      dataEl.innerHTML = '';
+      return;
+    }
+    loadGameData(this.dataset.containerId, game, dataEl);
+  });
+
   const prospectsBtn = card.querySelector('.prospects-btn');
   if (prospectsBtn) {
     prospectsBtn.addEventListener('click', function () {
@@ -1093,6 +1106,80 @@ function fetchAllResources() {
       fetchResources(card.dataset.containerId);
     }
   });
+}
+
+// ===================== Game Data =====================
+
+const GAME_DATA_TYPES = {
+  minecraft: [
+    { type: 'whitelist', label: 'Whitelist' },
+    { type: 'ops', label: 'OPs' },
+    { type: 'banned-players', label: 'Banned Players' },
+    { type: 'server-properties', label: 'server.properties' },
+  ],
+  factorio: [
+    { type: 'saves', label: 'Save Files' },
+    { type: 'mods', label: 'Mods' },
+    { type: 'adminlist', label: 'Admin List' },
+    { type: 'banlist', label: 'Ban List' },
+  ],
+  terraria: [
+    { type: 'worlds', label: 'World Files' },
+  ],
+};
+
+async function loadGameData(containerId, game, el) {
+  const types = GAME_DATA_TYPES[game];
+  if (!types || types.length === 0) {
+    el.innerHTML = '<div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">No game data available for this game</div>';
+    return;
+  }
+
+  el.innerHTML = '<div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">Loading game data...</div>';
+
+  const sections = [];
+  for (const t of types) {
+    try {
+      const res = await fetch(`${API_BASE}/${containerId}/game-data/${t.type}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      if (t.type === 'saves' || t.type === 'mods' || t.type === 'worlds') {
+        const entries = data.entries || [];
+        if (entries.length === 0) {
+          sections.push(`<div><span class="font-medium text-gray-300">${t.label}:</span> <span class="text-gray-500">None found</span></div>`);
+        } else {
+          const list = entries.map(e => {
+            const size = e.size > 1048576 ? (e.size / 1048576).toFixed(1) + ' MB' : (e.size / 1024).toFixed(1) + ' KB';
+            return `<div class="flex justify-between py-0.5"><span class="text-gray-300">${escapeHtml(e.name)}</span><span class="text-gray-500">${size}</span></div>`;
+          }).join('');
+          sections.push(`<div class="mb-2"><span class="font-medium text-gray-300">${t.label} (${entries.length})</span><div class="ml-2 mt-1">${list}</div></div>`);
+        }
+      } else if (t.type === 'server-properties') {
+        const props = data.properties || {};
+        const keys = Object.keys(props).slice(0, 15);
+        const rows = keys.map(k => `<div class="flex justify-between"><span class="text-gray-400">${k}</span><span class="text-gray-300">${escapeHtml(props[k])}</span></div>`).join('');
+        sections.push(`<div class="mb-2"><span class="font-medium text-gray-300">${t.label}</span><div class="ml-2 mt-1">${rows}</div></div>`);
+      } else {
+        const items = data.data || [];
+        if (Array.isArray(items) && items.length > 0) {
+          const names = items.map(i => {
+            if (typeof i === 'string') return i;
+            return i.name || i.username || i.nickname || JSON.stringify(i);
+          });
+          sections.push(`<div class="mb-2"><span class="font-medium text-gray-300">${t.label} (${items.length})</span><div class="flex flex-wrap gap-1 ml-2 mt-1">${names.map(n => `<span class="px-2 py-0.5 rounded bg-gray-700 text-gray-300">${escapeHtml(n)}</span>`).join('')}</div></div>`);
+        } else {
+          sections.push(`<div><span class="font-medium text-gray-300">${t.label}:</span> <span class="text-gray-500">Empty</span></div>`);
+        }
+      }
+    } catch {}
+  }
+
+  if (sections.length === 0) {
+    el.innerHTML = '<div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">No data available</div>';
+  } else {
+    el.innerHTML = `<div class="mt-2 pt-2 border-t border-gray-700 text-xs space-y-1">${sections.join('')}</div>`;
+  }
 }
 
 // ===================== Config Editor =====================
@@ -2114,3 +2201,41 @@ setInterval(fetchContainers, 5000);
 setInterval(fetchAllResources, 10000);
 setInterval(fetchHostStats, 10000);
 setInterval(fetchAllPlayers, 15000);
+
+// Docker Events SSE for real-time notifications
+(function connectEvents() {
+  const headers = {};
+  if (authToken) headers['x-session-token'] = authToken;
+  fetch('/api/events/stream', { headers }).then(res => {
+    if (!res.ok || !res.body) return;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          setTimeout(connectEvents, 5000);
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        for (const part of parts) {
+          const dataLine = part.split('\n').find(l => l.startsWith('data: '));
+          if (!dataLine) continue;
+          try {
+            const event = JSON.parse(dataLine.slice(6));
+            if (event.action === 'die' && event.name) {
+              showToast(`${event.name} stopped unexpectedly`, 'error');
+            } else if (event.action === 'start' && event.name) {
+              showToast(`${event.name} started`, 'success');
+            }
+          } catch {}
+        }
+        read();
+      }).catch(() => setTimeout(connectEvents, 5000));
+    }
+    read();
+  }).catch(() => setTimeout(connectEvents, 30000));
+})();
