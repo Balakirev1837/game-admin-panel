@@ -13,8 +13,9 @@ jest.mock('dockerode', () => {
 
 // Mock the RCON service
 const mockSendRconCommand = jest.fn();
-jest.mock('../src/services/rcon', () => ({
+jest.mock('../src/services/rconPool', () => ({
   sendRconCommand: mockSendRconCommand,
+  flushPool: jest.fn(),
 }));
 
 const app = require('../src/index');

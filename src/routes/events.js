@@ -1,6 +1,5 @@
 const express = require('express');
 const { docker } = require('../services/docker');
-const { authMiddleware } = require('./auth');
 
 const router = express.Router();
 
@@ -8,6 +7,11 @@ let eventBuffer = [];
 const MAX_BUFFER = 100;
 let eventStream = null;
 let clients = new Set();
+let onEventCallbacks = [];
+
+function onEvent(callback) {
+  onEventCallbacks.push(callback);
+}
 
 function startEventListener() {
   if (eventStream || !docker) return;
@@ -29,6 +33,10 @@ function startEventListener() {
         eventBuffer.push(simplified);
         if (eventBuffer.length > MAX_BUFFER) {
           eventBuffer = eventBuffer.slice(-MAX_BUFFER);
+        }
+
+        for (const cb of onEventCallbacks) {
+          try { cb(simplified); } catch {}
         }
 
         const data = JSON.stringify(simplified);
@@ -80,4 +88,4 @@ router.get('/', (_req, res) => {
   res.json({ events: eventBuffer.slice(-50) });
 });
 
-module.exports = { router, startEventListener };
+module.exports = { router, startEventListener, onEvent };

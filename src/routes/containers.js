@@ -3,6 +3,9 @@ const { docker } = require('../services/docker');
 
 const router = express.Router();
 
+let containerCache = { data: null, timestamp: 0 };
+const CONTAINER_CACHE_TTL = process.env.NODE_ENV === 'test' ? 0 : 1500;
+
 async function handleContainerAction(req, res, action, successMessage) {
   const { id } = req.params;
   if (!docker) {
@@ -34,10 +37,20 @@ function formatDuration(seconds) {
   return parts.join(' ');
 }
 
+function invalidateContainerCache() {
+  containerCache = { data: null, timestamp: 0 };
+}
+
 router.get('/', async (_req, res) => {
   if (!docker) {
     return res.status(503).json({ error: 'Docker client is not available' });
   }
+
+  const now = Date.now();
+  if (containerCache.data && (now - containerCache.timestamp) < CONTAINER_CACHE_TTL) {
+    return res.json(containerCache.data);
+  }
+
   try {
     const containers = await docker.listContainers({
       all: true,
@@ -96,6 +109,7 @@ router.get('/', async (_req, res) => {
       return base;
     }));
 
+    containerCache = { data: detailed, timestamp: Date.now() };
     return res.json(detailed);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -147,4 +161,4 @@ function formatBytes(bytes) {
   return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
 }
 
-module.exports = router;
+module.exports = { router, invalidateContainerCache };

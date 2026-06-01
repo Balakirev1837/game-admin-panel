@@ -100,7 +100,7 @@ module.exports = {
   },
 
   async getPlayers(info) {
-    const { sendRconCommand } = require('../services/rcon');
+    const { sendRconCommand } = require('../services/rconPool');
     const rcon = await this.resolveRcon(info);
     if (!rcon.foundPort) return [];
     try {

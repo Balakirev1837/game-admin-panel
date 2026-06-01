@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const { verifyDockerConnection } = require('./services/docker');
 const { router: authRouter, authMiddleware } = require('./routes/auth');
-const containersRouter = require('./routes/containers');
+const { router: containersRouter, invalidateContainerCache } = require('./routes/containers');
 const configRouter = require('./routes/config');
 const rconRouter = require('./routes/rcon');
 const restRouter = require('./routes/rest');
@@ -14,7 +14,7 @@ const resourcesRouter = require('./routes/resources');
 const { router: logsRouter } = require('./routes/logs');
 const hostRouter = require('./routes/host');
 const playersRouter = require('./routes/players');
-const { router: eventsRouter } = require('./routes/events');
+const { router: eventsRouter, onEvent } = require('./routes/events');
 const gameDataRouter = require('./routes/gameData');
 const aiRouter = require('./routes/ai');
 const games = require('./games');
@@ -66,6 +66,12 @@ app.use('/api/containers', playersRouter);
 
 app.use('/api/events', authMiddleware);
 app.use('/api/events', eventsRouter);
+
+onEvent((event) => {
+  if (event.type === 'container' && ['start', 'die', 'stop', 'restart', 'destroy', 'rename', 'pause', 'unpause'].includes(event.action)) {
+    invalidateContainerCache();
+  }
+});
 
 app.use('/api/containers', gameDataRouter);
 

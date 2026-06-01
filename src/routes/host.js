@@ -1,11 +1,15 @@
 const express = require('express');
 const os = require('os');
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
 const { docker } = require('../services/docker');
 
 const router = express.Router();
 
+let diskCache = { data: [], timestamp: 0 };
+const DISK_CACHE_TTL = 30000;
+
 router.get('/stats', async (_req, res) => {
+  const disk = await getDiskUsage();
   const result = {
     hostname: os.hostname(),
     platform: os.platform(),
@@ -22,7 +26,7 @@ router.get('/stats', async (_req, res) => {
       percent: ((os.totalmem() - os.freemem()) / os.totalmem() * 100),
     },
     cpus: os.cpus().length,
-    disk: getDiskUsage(),
+    disk,
     docker: null,
   };
 
@@ -43,12 +47,23 @@ router.get('/stats', async (_req, res) => {
   return res.json(result);
 });
 
-function getDiskUsage() {
+async function getDiskUsage() {
+  const now = Date.now();
+  if (diskCache.data.length > 0 && (now - diskCache.timestamp) < DISK_CACHE_TTL) {
+    return diskCache.data;
+  }
+
   try {
-    const output = execSync('df -B1 --output=size,used,avail,pcent,target 2>/dev/null || df -B1 2>/dev/null', {
-      timeout: 3000,
-      encoding: 'utf-8',
+    const output = await new Promise((resolve, reject) => {
+      exec('df -B1 --output=size,used,avail,pcent,target 2>/dev/null || df -B1 2>/dev/null', {
+        timeout: 2000,
+        encoding: 'utf-8',
+      }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout);
+      });
     });
+
     const lines = output.trim().split('\n');
     const disks = [];
     for (let i = 1; i < lines.length; i++) {
@@ -67,9 +82,10 @@ function getDiskUsage() {
         });
       }
     }
+    diskCache = { data: disks, timestamp: now };
     return disks;
   } catch {
-    return [];
+    return diskCache.data;
   }
 }
 

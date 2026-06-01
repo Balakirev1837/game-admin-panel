@@ -1,6 +1,6 @@
 const express = require('express');
 const { docker } = require('../services/docker');
-const { sendRconCommand } = require('../services/rcon');
+const { sendRconCommand } = require('../services/rconPool');
 const games = require('../games');
 
 const router = express.Router();

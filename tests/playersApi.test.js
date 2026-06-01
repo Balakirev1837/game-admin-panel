@@ -12,8 +12,9 @@ jest.mock('dockerode', () => {
   }));
 });
 
-jest.mock('../src/services/rcon', () => ({
+jest.mock('../src/services/rconPool', () => ({
   sendRconCommand: mockSendRcon,
+  flushPool: jest.fn(),
 }));
 
 jest.mock('../src/services/containerFiles', () => ({

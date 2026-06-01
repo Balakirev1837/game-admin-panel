@@ -2110,12 +2110,36 @@ async function fetchHostStats() {
 }
 fetchHostStats();
 
-setInterval(fetchContainers, 5000);
-setInterval(fetchAllResources, 10000);
-setInterval(fetchHostStats, 10000);
-setInterval(fetchAllPlayers, 15000);
+// Polling intervals (paused when tab hidden)
+let pollTimers = {};
+let isTabVisible = true;
 
-// Docker Events SSE for real-time notifications
+function startPolling() {
+  stopPolling();
+  pollTimers.resources = setInterval(() => { if (isTabVisible) fetchAllResources(); }, 10000);
+  pollTimers.host = setInterval(() => { if (isTabVisible) fetchHostStats(); }, 10000);
+  pollTimers.players = setInterval(() => { if (isTabVisible) fetchAllPlayers(); }, 15000);
+  pollTimers.containers = setInterval(() => { if (isTabVisible) fetchContainers(); }, 30000);
+}
+
+function stopPolling() {
+  for (const timer of Object.values(pollTimers)) clearInterval(timer);
+  pollTimers = {};
+}
+
+document.addEventListener('visibilitychange', () => {
+  isTabVisible = !document.hidden;
+  if (isTabVisible) {
+    fetchContainers();
+    fetchAllResources();
+    fetchHostStats();
+    fetchAllPlayers();
+  }
+});
+
+startPolling();
+
+// Docker Events SSE for real-time notifications + container refresh
 (function connectEvents() {
   const headers = {};
   if (authToken) headers['x-session-token'] = authToken;
@@ -2141,8 +2165,12 @@ setInterval(fetchAllPlayers, 15000);
             const event = JSON.parse(dataLine.slice(6));
             if (event.action === 'die' && event.name) {
               showToast(`${event.name} stopped unexpectedly`, 'error');
+              fetchContainers();
             } else if (event.action === 'start' && event.name) {
               showToast(`${event.name} started`, 'success');
+              fetchContainers();
+            } else if (event.action === 'restart' || event.action === 'stop' || event.action === 'pause' || event.action === 'unpause' || event.action === 'rename' || event.action === 'destroy') {
+              fetchContainers();
             }
           } catch (err) {
             console.warn('Failed to parse SSE event:', err);
