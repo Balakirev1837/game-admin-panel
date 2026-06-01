@@ -175,6 +175,92 @@ function startScheduler() {
 
 if (process.env.NODE_ENV !== 'test') {
   startScheduler();
+  startDailyDigest();
 }
 
-module.exports = { loadSchedules, addSchedule, removeSchedule, updateSchedule, parseCron, startScheduler };
+async function generateHealthDigest() {
+  if (!docker || !NTFY_TOPIC) return;
+
+  const DIGESTS_DIR = require('path').join(getGameConfigRoot(), '.game-admin-panel', 'digests');
+  try {
+    fs.mkdirSync(DIGESTS_DIR, { recursive: true });
+  } catch {}
+
+  try {
+    const containers = await docker.listContainers({
+      all: true,
+      filters: { label: ['game-admin-panel.enabled=true'] }
+    });
+
+    const summary = [];
+    for (const c of containers) {
+      const name = c.Names?.[0]?.replace(/^\//, '') || c.Id.slice(0, 12);
+      const game = c.Labels?.['game-admin-panel.game'] || 'unknown';
+      const state = c.State || 'unknown';
+      const status = c.Status || '';
+
+      let healthInfo = '';
+      try {
+        const info = await docker.getContainer(c.Id).inspect();
+        if (info.State?.Health) {
+          healthInfo = ` Health: ${info.State.Health.Status}`;
+        }
+        if (info.State?.Running && info.State?.StartedAt) {
+          const uptime = Math.floor((Date.now() - new Date(info.State.StartedAt).getTime()) / 1000);
+          const hours = Math.floor(uptime / 3600);
+          healthInfo += ` Uptime: ${hours}h`;
+        }
+      } catch {}
+
+      summary.push(`${name} (${game}): ${state} - ${status}${healthInfo}`);
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+    const digest = {
+      date,
+      generated: new Date().toISOString(),
+      containers: summary,
+      total: containers.length,
+      running: containers.filter(c => c.State === 'running').length,
+    };
+
+    const digestFile = require('path').join(DIGESTS_DIR, `${date}.json`);
+    fs.writeFileSync(digestFile, JSON.stringify(digest, null, 2));
+
+    if (NTFY_TOPIC && summary.length > 0) {
+      const message = `Daily Health Digest\n\n${summary.join('\n')}\n\nTotal: ${digest.total}, Running: ${digest.running}`;
+      await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+        method: 'POST',
+        body: message,
+        headers: {
+          'Title': `Daily Server Health - ${digest.running}/${digest.total} running`,
+          'Priority': 'low',
+          'Tags': 'white_check_mark',
+        },
+      });
+    }
+
+    logger.info({ date, total: digest.total, running: digest.running }, 'Daily health digest generated');
+  } catch (err) {
+    logger.warn({ err }, 'Failed to generate daily health digest');
+  }
+}
+
+function startDailyDigest() {
+  if (process.env.NODE_ENV === 'test' || !NTFY_TOPIC) return;
+
+  const check = () => {
+    const now = new Date();
+    if (now.getHours() === 4 && now.getMinutes() < 30) {
+      const today = now.toISOString().split('T')[0];
+      const lastDigestFile = require('path').join(getGameConfigRoot(), '.game-admin-panel', 'digests', `${today}.json`);
+      if (!fs.existsSync(lastDigestFile)) {
+        generateHealthDigest();
+      }
+    }
+  };
+
+  setInterval(check, 15 * 60 * 1000);
+}
+
+module.exports = { loadSchedules, addSchedule, removeSchedule, updateSchedule, parseCron, startScheduler, generateHealthDigest };

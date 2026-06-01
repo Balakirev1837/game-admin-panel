@@ -506,10 +506,11 @@ function createLogsPanel(containerId) {
       ? allLogs.filter(l => l.text.toLowerCase().includes(query))
       : allLogs;
     countSpan.textContent = `${filtered.length} lines`;
-    output.innerHTML = filtered.map(l => {
+    output.innerHTML = filtered.map((l, idx) => {
       const color = l.stream === 'stderr' ? 'text-red-400' : 'text-gray-300';
       const ts = l.timestamp ? `<span class="text-gray-600">${l.timestamp}</span> ` : '';
-      return `<div class="${color}">${ts}${escapeHtml(l.text)}</div>`;
+      const clickable = l.stream === 'stderr' ? `cursor-pointer hover:bg-red-900/30 rounded px-0.5" data-stderr-idx="${idx}` : '';
+      return `<div class="${color} ${clickable}">${ts}${escapeHtml(l.text)}</div>`;
     }).join('');
     output.scrollTop = output.scrollHeight;
   }
@@ -529,6 +530,37 @@ function createLogsPanel(containerId) {
     URL.revokeObjectURL(a.href);
   });
   searchInput.addEventListener('input', renderFilteredLogs);
+
+  output.addEventListener('click', async (e) => {
+    const line = e.target.closest('[data-stderr-idx]');
+    if (!line || !aiEnabled) return;
+
+    const existing = line.querySelector('.ai-explain-popover');
+    if (existing) { existing.remove(); return; }
+
+    const logLine = line.textContent.trim();
+    const context = allLogs.slice(Math.max(0, parseInt(line.dataset.stderrIdx) - 3), parseInt(line.dataset.stderrIdx) + 4)
+      .map(l => `[${l.stream}] ${l.text}`).join('\n');
+
+    line.insertAdjacentHTML('beforeend', '<span class="ai-explain-popover ml-2 text-yellow-400 text-xs italic">explaining...</span>');
+
+    try {
+      const res = await fetch(`/api/ai/${containerId}/explain-error`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logLine, context }),
+      });
+      const data = await res.json();
+      const popover = line.querySelector('.ai-explain-popover');
+      if (popover) {
+        const badge = data.cached ? ' <span class="text-gray-500">(cached)</span>' : '';
+        popover.outerHTML = `<span class="ai-explain-popover ml-2 text-xs text-yellow-300 bg-gray-800 border border-yellow-700 rounded px-2 py-1 inline-block mt-1">${escapeHtml(data.explanation)}${badge}</span>`;
+      }
+    } catch {
+      const popover = line.querySelector('.ai-explain-popover');
+      if (popover) popover.textContent = '(explanation failed)';
+    }
+  });
 
   aiBtn.addEventListener('click', async () => {
     if (aiBtn.disabled) return;
@@ -1524,6 +1556,94 @@ function collectFormConfig() {
 /**
  * Open the config editor modal for a given container.
  */
+function addAiSuggestToConfigForm() {
+  fetch('/api/ai/status').then(r => r.json()).then(({ enabled }) => {
+    if (!enabled) return;
+    const form = configModalBody.querySelector('.config-form') || configModalBody.querySelector('div');
+    if (!form) return;
+
+    const suggestBar = document.createElement('div');
+    suggestBar.className = 'mb-4 p-3 rounded-md bg-violet-900/30 border border-violet-700/50';
+    suggestBar.innerHTML = `
+      <div class="flex items-center gap-2">
+        <input type="text" class="ai-suggest-input flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" placeholder="Describe changes in plain language, e.g. &quot;make it creative mode with 10 max players&quot;">
+        <button class="ai-suggest-btn px-3 py-1.5 text-sm rounded bg-violet-600 text-white hover:bg-violet-500" disabled>Suggest</button>
+      </div>
+      <div class="ai-suggest-result mt-2 hidden"></div>
+    `;
+
+    form.insertBefore(suggestBar, form.firstChild);
+
+    const input = suggestBar.querySelector('.ai-suggest-input');
+    const btn = suggestBar.querySelector('.ai-suggest-btn');
+    const result = suggestBar.querySelector('.ai-suggest-result');
+
+    input.addEventListener('input', () => { btn.disabled = !input.value.trim(); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) btn.click(); });
+
+    btn.addEventListener('click', async () => {
+      if (!currentEditContainer || !input.value.trim()) return;
+      btn.disabled = true;
+      btn.textContent = 'Thinking...';
+      result.classList.remove('hidden');
+      result.innerHTML = '<span class="text-xs text-gray-400">Asking AI...</span>';
+
+      try {
+        const res = await fetch(`/api/ai/${currentEditContainer.id}/suggest-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: input.value.trim() }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const suggestions = data.suggestions || {};
+
+        if (suggestions.message) {
+          result.innerHTML = `<div class="text-xs text-yellow-300 p-2">${escapeHtml(suggestions.message)}</div>`;
+          return;
+        }
+
+        const keys = Object.keys(suggestions);
+        if (keys.length === 0) {
+          result.innerHTML = '<div class="text-xs text-gray-400">No suggestions returned.</div>';
+          return;
+        }
+
+        let html = '<div class="text-xs text-violet-300 mb-2">AI suggests these changes:</div><div class="space-y-1">';
+        for (const key of keys) {
+          html += `<label class="flex items-center gap-2 p-1.5 rounded bg-gray-800 hover:bg-gray-750 cursor-pointer">
+            <input type="checkbox" class="ai-suggest-check" data-key="${escapeHtml(key)}" data-value="${escapeHtml(String(suggestions[key]))}" checked>
+            <span class="font-mono text-gray-300">${escapeHtml(key)}</span>
+            <span class="text-gray-500">&rarr;</span>
+            <span class="text-green-400">${escapeHtml(String(suggestions[key]))}</span>
+          </label>`;
+        }
+        html += '</div><button class="ai-suggest-apply mt-2 px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-500">Apply Selected</button>';
+        result.innerHTML = html;
+
+        result.querySelector('.ai-suggest-apply').addEventListener('click', () => {
+          result.querySelectorAll('.ai-suggest-check:checked').forEach(cb => {
+            const formInput = configModalBody.querySelector(`[data-config-key="${cb.dataset.key}"]`);
+            if (formInput) {
+              formInput.value = cb.dataset.value;
+              formInput.dispatchEvent(new Event('change'));
+            }
+          });
+          result.innerHTML = '<div class="text-xs text-green-400">Applied! Review and save.</div>';
+        });
+      } catch (err) {
+        result.innerHTML = `<div class="text-xs text-red-400">${escapeHtml(err.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Suggest';
+      }
+    });
+  }).catch(() => {});
+}
+
 async function openConfigEditor(containerId, containerName, containerState, game) {
   currentEditContainer = { id: containerId, name: containerName, state: containerState };
   currentEditGame = game || 'icarus';
@@ -1569,6 +1689,8 @@ async function openConfigEditor(containerId, containerName, containerState, game
 
     configModalSave.disabled = false;
     configModalSave.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    addAiSuggestToConfigForm();
   } catch (err) {
     configModalBody.innerHTML = `<div class="text-center py-8"><p class="text-red-400 text-sm">Failed to load config: ${escapeHtml(err.message)}</p></div>`;
   }
