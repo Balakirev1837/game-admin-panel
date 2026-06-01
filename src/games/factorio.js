@@ -1,4 +1,5 @@
 const factorioConfig = require('../services/factorioConfig');
+const logger = require('../services/logger');
 
 const CONFIG_FIELDS = [
   { key: 'name', label: 'Server Name', type: 'text', placeholder: 'Factorio Server', help: 'Name of the server' },
@@ -90,7 +91,9 @@ module.exports = {
       const { readFileFromContainer } = require('../services/containerFiles');
       const rconData = await readFileFromContainer(info.Id, '/factorio/config/rconpw');
       if (rconData) rconPassword = rconData.trim();
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Factorio resolveRcon failed to read rconpw');
+    }
 
     return { rconHost, rconPort, foundPort, rconPassword };
   },
@@ -111,7 +114,8 @@ module.exports = {
         if (match) players.push({ name: match[1], online: true });
       }
       return players;
-    } catch {
+    } catch (err) {
+      logger.warn({ err }, 'Factorio getPlayers failed');
       return [];
     }
   },

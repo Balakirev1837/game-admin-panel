@@ -1,4 +1,5 @@
 const { readFileFromContainer, writeFileToContainer } = require('./containerFiles');
+const logger = require('./logger');
 
 const FACTORIO_CONFIG_FIELDS = [
   { key: 'name', label: 'Server Name', type: 'text', placeholder: 'Factorio Server', help: 'Name of the server' },
@@ -25,7 +26,9 @@ async function readConfig(containerNameOrId, info) {
   if (settingsData) {
     try {
       settings = JSON.parse(settingsData);
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Failed to parse Factorio server-settings.json');
+    }
   }
 
   let rconPassword = '';
@@ -108,7 +111,9 @@ async function writeConfig(containerNameOrId, data, info) {
     try {
       const existing = JSON.parse(existingData);
       merged = { ...existing, ...merged };
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Failed to parse existing Factorio config for merge');
+    }
   }
 
   await writeFileToContainer(containerId, '/factorio/config/server-settings.json', JSON.stringify(merged, null, 2));

@@ -1,6 +1,7 @@
 const express = require('express');
 const { docker } = require('../services/docker');
 const { readFileFromContainer, execInContainer } = require('../services/containerFiles');
+const logger = require('../services/logger');
 const games = require('../games');
 
 const router = express.Router();
@@ -15,7 +16,8 @@ async function resolveContainerInfo(containerId) {
       game: (info.Config && info.Config.Labels && info.Config.Labels['game-admin-panel.game']) || 'icarus',
       running: info.State && info.State.Running === true,
     };
-  } catch {
+  } catch (err) {
+    logger.warn({ err, containerId }, 'Failed to inspect container for game data');
     return { id: null, name: null, game: 'icarus', running: false };
   }
 }
@@ -45,7 +47,8 @@ router.get('/:id/game-data/:type', async (req, res) => {
           .filter(l => !l.endsWith('/'))
           .map(name => ({ name: name.replace(/@$/, ''), size: 0, modified: null }));
         return res.json({ entries, game });
-      } catch {
+      } catch (err) {
+        logger.warn({ err, containerId, path: typeDef.path }, 'Failed to list directory in container');
         return res.json({ entries: [], game });
       }
     }
@@ -66,7 +69,8 @@ router.get('/:id/game-data/:type', async (req, res) => {
     try {
       const parsed = JSON.parse(data);
       return res.json({ data: Array.isArray(parsed) ? parsed : [parsed], game });
-    } catch {
+    } catch (err) {
+      logger.warn({ err, containerId, path: typeDef.path }, 'Failed to parse game data JSON');
       return res.json({ data: [], game });
     }
   } catch (err) {

@@ -1,6 +1,7 @@
 const express = require('express');
 const prospects = require('../services/prospects');
 const { docker } = require('../services/docker');
+const logger = require('../services/logger');
 
 const router = express.Router();
 
@@ -9,7 +10,8 @@ async function resolveContainerName(containerId) {
     const container = docker.getContainer(containerId);
     const info = await container.inspect();
     return info.Name.replace(/^\//, '');
-  } catch {
+  } catch (err) {
+    logger.warn({ err, containerId }, 'Failed to resolve container name');
     return null;
   }
 }

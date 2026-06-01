@@ -1,4 +1,5 @@
 const terrariaConfig = require('../services/terrariaConfig');
+const logger = require('../services/logger');
 
 const CONFIG_FIELDS = [
   { key: 'ServerName', label: 'Server Name', type: 'text', placeholder: 'Terraria Server', help: 'Name of the server' },
@@ -71,11 +72,13 @@ module.exports = {
       for (const p of configPaths) {
         const data = await readFileFromContainer(info.Id, p);
         if (data) {
-          try { config = JSON.parse(data); } catch {}
+          try { config = JSON.parse(data); } catch (err) { logger.warn({ err, path: p }, 'Terraria resolveRest failed to parse config'); }
           break;
         }
       }
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Terraria resolveRest failed to read config from container');
+    }
 
     if (config.RestApiPort) restPort = config.RestApiPort;
 
@@ -111,7 +114,8 @@ module.exports = {
       });
       if (!response.players) return [];
       return response.players.map(p => ({ name: p.nickname || p.name || p.username || String(p) }));
-    } catch {
+    } catch (err) {
+      logger.warn({ err }, 'Terraria getPlayers failed');
       return [];
     }
   },

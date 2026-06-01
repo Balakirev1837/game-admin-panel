@@ -1,4 +1,5 @@
 const cs2Config = require('../services/cs2Config');
+const logger = require('../services/logger');
 
 const CONFIG_FIELDS = [
   { key: 'SRCDS_TOKEN', label: 'Steam Game Server Token', type: 'text', placeholder: '', help: 'Required. Get one at steamcommunity.com/dev/managegameservers' },
@@ -120,7 +121,8 @@ module.exports = {
         }
       }
       return players;
-    } catch {
+    } catch (err) {
+      logger.warn({ err }, 'CS2 getPlayers failed');
       return [];
     }
   },

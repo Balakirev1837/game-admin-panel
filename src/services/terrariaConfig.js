@@ -1,4 +1,5 @@
 const { readFileFromContainer, writeFileToContainer } = require('./containerFiles');
+const logger = require('./logger');
 
 const TERRARIA_CONFIG_FIELDS = [
   { key: 'ServerName', label: 'Server Name', type: 'text', placeholder: 'Terraria Server', help: 'Name of the server' },
@@ -36,7 +37,9 @@ async function readConfig(containerNameOrId, info) {
   if (data) {
     try {
       settings = JSON.parse(data);
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Failed to parse Terraria config JSON');
+    }
   }
 
   if (settings.ApplicationRestTokens && Array.isArray(settings.ApplicationRestTokens) && settings.ApplicationRestTokens.length > 0) {
@@ -109,7 +112,9 @@ async function writeConfig(containerNameOrId, data, info) {
     try {
       const existing = JSON.parse(existingRaw);
       merged = { ...existing, ...merged };
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Failed to parse existing Terraria config for merge');
+    }
   }
 
   await writeFileToContainer(containerId, configPath, JSON.stringify(merged, null, 2));

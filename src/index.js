@@ -3,6 +3,8 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const pinoHttp = require('pino-http');
+const logger = require('./services/logger');
 const { verifyDockerConnection } = require('./services/docker');
 const { router: authRouter, authMiddleware } = require('./routes/auth');
 const { router: containersRouter, invalidateContainerCache } = require('./routes/containers');
@@ -24,6 +26,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(pinoHttp({ logger }));
 app.use(express.static('public'));
 
 app.get('/health', (_req, res) => {
@@ -34,7 +37,8 @@ app.get('/api/version', (_req, res) => {
   try {
     const version = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf-8').trim();
     res.json({ version });
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to read VERSION file');
     res.json({ version: 'unknown' });
   }
 });
@@ -84,7 +88,7 @@ app.use('/api/host', hostRouter);
 if (require.main === module) {
   verifyDockerConnection().then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info({ port: PORT }, 'Server running');
     });
   });
 }

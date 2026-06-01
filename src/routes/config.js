@@ -1,6 +1,7 @@
 const express = require('express');
 const backup = require('../services/backup');
 const { docker } = require('../services/docker');
+const logger = require('../services/logger');
 const games = require('../games');
 
 const router = express.Router();
@@ -23,7 +24,8 @@ async function resolveContainerInfo(containerId) {
     }
 
     return { name, game, info, composeDir };
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to inspect container for config resolution');
     return { name: null, game: 'icarus', info: null, composeDir: null };
   }
 }

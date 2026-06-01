@@ -1,4 +1,5 @@
 const SrcdsRcon = require('srcds-rcon');
+const logger = require('./logger');
 
 const DEFAULT_TIMEOUT_MS = parseInt(process.env.RCON_TIMEOUT_MS, 10) || 5000;
 const IDLE_TIMEOUT_MS = 60000;
@@ -19,7 +20,8 @@ async function getConnection(host, port, password) {
       clearTimeout(entry.idleTimer);
       entry.idleTimer = setTimeout(() => evict(key), IDLE_TIMEOUT_MS);
       return entry.client;
-    } catch {
+    } catch (err) {
+      logger.warn({ err, host, port }, 'RCON pool ping failed, evicting connection');
       evict(key);
     }
   }
@@ -47,7 +49,7 @@ function evict(key) {
   const entry = pool.get(key);
   if (!entry) return;
   clearTimeout(entry.idleTimer);
-  try { entry.client.disconnect(); } catch {}
+  try { entry.client.disconnect(); } catch (err) { logger.warn({ err }, 'RCON pool disconnect error'); }
   pool.delete(key);
 }
 

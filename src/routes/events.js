@@ -1,5 +1,6 @@
 const express = require('express');
 const { docker } = require('../services/docker');
+const logger = require('../services/logger');
 
 const router = express.Router();
 
@@ -36,16 +37,16 @@ function startEventListener() {
         }
 
         for (const cb of onEventCallbacks) {
-          try { cb(simplified); } catch {}
+          try { cb(simplified); } catch (err) { logger.warn({ err }, 'Event callback error'); }
         }
 
         const data = JSON.stringify(simplified);
         for (const client of clients) {
           try {
             client.write(`data: ${data}\n\n`);
-          } catch {}
+          } catch (err) { logger.warn({ err }, 'SSE client write error'); }
         }
-      } catch {}
+      } catch (err) { logger.warn({ err }, 'Failed to parse Docker event chunk'); }
     });
 
     eventStream.on('error', () => {
@@ -57,7 +58,8 @@ function startEventListener() {
       eventStream = null;
       setTimeout(startEventListener, 5000);
     });
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to start Docker event listener');
     eventStream = null;
   }
 }

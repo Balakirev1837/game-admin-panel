@@ -2,6 +2,7 @@ const express = require('express');
 const os = require('os');
 const { exec } = require('child_process');
 const { docker } = require('../services/docker');
+const logger = require('../services/logger');
 
 const router = express.Router();
 
@@ -41,7 +42,9 @@ router.get('/stats', async (_req, res) => {
         containers_stopped: info.ContainersStopped || 0,
         images: info.Images || 0,
       };
-    } catch {}
+    } catch (err) {
+      logger.warn({ err }, 'Failed to get Docker info');
+    }
   }
 
   return res.json(result);
@@ -84,7 +87,8 @@ async function getDiskUsage() {
     }
     diskCache = { data: disks, timestamp: now };
     return disks;
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to get disk usage');
     return diskCache.data;
   }
 }

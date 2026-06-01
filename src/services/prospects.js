@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('./logger');
 
 function getGameRoot() {
   return process.env.GAME_CONFIG_ROOT || '/host-games';
@@ -29,10 +30,11 @@ function saveProspect(containerName, name, content) {
   let parsed;
   try {
     parsed = typeof content === 'string' ? JSON.parse(content) : content;
-  } catch {
-    const err = new Error('Invalid JSON content — file may be corrupted');
-    err.code = 'EINVAL';
-    throw err;
+  } catch (err) {
+    logger.warn({ err, name }, 'Failed to parse prospect JSON content');
+    const err2 = new Error('Invalid JSON content — file may be corrupted');
+    err2.code = 'EINVAL';
+    throw err2;
   }
 
   if (!parsed || typeof parsed !== 'object') {

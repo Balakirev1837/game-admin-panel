@@ -1,4 +1,5 @@
 const minecraftConfig = require('../services/minecraftConfig');
+const logger = require('../services/logger');
 
 const CONFIG_FIELDS = [
   { key: 'EULA', label: 'Accept EULA', type: 'select', options: ['TRUE', 'FALSE'], help: 'Must be TRUE to run the server' },
@@ -110,7 +111,8 @@ module.exports = {
       if (!match) return [];
       const names = match[3] ? match[3].split(', ').map(n => n.trim()).filter(Boolean) : [];
       return names.map(name => ({ name }));
-    } catch {
+    } catch (err) {
+      logger.warn({ err }, 'Minecraft getPlayers failed');
       return [];
     }
   },

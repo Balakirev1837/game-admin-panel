@@ -1,5 +1,6 @@
 const express = require('express');
 const { docker } = require('../services/docker');
+const logger = require('../services/logger');
 
 const router = express.Router();
 
@@ -104,7 +105,9 @@ router.get('/', async (_req, res) => {
           base.uptime = formatDuration(uptimeSec);
           base.uptime_seconds = Math.floor(uptimeSec);
         }
-      } catch {}
+      } catch (err) {
+        logger.warn({ err, containerId: c.Id }, 'Failed to inspect container details');
+      }
 
       return base;
     }));
