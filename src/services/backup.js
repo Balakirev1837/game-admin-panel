@@ -6,7 +6,7 @@ function getGameConfigRoot() {
 }
 
 function getMaxBackups() {
-  return parseInt(process.env.MAX_BACKUPS, 10) || 10;
+  return parseInt(process.env.BACKUP_RETENTION, 10) || parseInt(process.env.MAX_BACKUPS, 10) || 10;
 }
 
 const CONTAINER_CONFIG_GAMES = new Set(['factorio', 'terraria']);

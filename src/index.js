@@ -19,6 +19,8 @@ const playersRouter = require('./routes/players');
 const { router: eventsRouter, onEvent } = require('./routes/events');
 const gameDataRouter = require('./routes/gameData');
 const aiRouter = require('./routes/ai');
+const schedulesRouter = require('./routes/schedules');
+const snapshotsRouter = require('./routes/snapshots');
 const games = require('./games');
 
 const app = express();
@@ -78,12 +80,16 @@ onEvent((event) => {
 });
 
 app.use('/api/containers', gameDataRouter);
+app.use('/api/containers', snapshotsRouter);
 
 app.use('/api/ai', authMiddleware);
 app.use('/api/ai', aiRouter);
 
 app.use('/api/host', authMiddleware);
 app.use('/api/host', hostRouter);
+
+app.use('/api/schedules', authMiddleware);
+app.use('/api/schedules', schedulesRouter);
 
 if (require.main === module) {
   verifyDockerConnection().then(() => {

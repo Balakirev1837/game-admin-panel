@@ -4,6 +4,8 @@ const logger = require('../services/logger');
 
 const router = express.Router();
 
+const NTFY_TOPIC = process.env.NTFY_TOPIC || null;
+
 let eventBuffer = [];
 const MAX_BUFFER = 100;
 let eventStream = null;
@@ -12,6 +14,28 @@ let onEventCallbacks = [];
 
 function onEvent(callback) {
   onEventCallbacks.push(callback);
+}
+
+async function sendNtfyNotification(event) {
+  if (!NTFY_TOPIC) return;
+  if (event.action !== 'die' && event.action !== 'oom') return;
+
+  const containerName = event.name || event.container?.slice(0, 12) || 'unknown';
+  const message = `Container ${containerName} ${event.action === 'die' ? 'died' : 'OOM killed'}`;
+  
+  try {
+    await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+      method: 'POST',
+      body: message,
+      headers: {
+        'Title': `Game Server Alert: ${containerName}`,
+        'Priority': event.action === 'oom' ? 'high' : 'default',
+        'Tags': event.action === 'oom' ? 'warning' : 'x',
+      },
+    });
+  } catch (err) {
+    logger.warn({ err }, 'Failed to send ntfy notification');
+  }
 }
 
 function startEventListener() {
@@ -37,8 +61,10 @@ function startEventListener() {
         }
 
         for (const cb of onEventCallbacks) {
-          try { cb(simplified); } catch (err) { logger.warn({ err }, 'Event callback error'); }
+          try { cb(simplified); } catch {}
         }
+
+        sendNtfyNotification(simplified);
 
         const data = JSON.stringify(simplified);
         for (const client of clients) {

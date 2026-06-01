@@ -1592,11 +1592,100 @@ function closeConfigEditor() {
 /**
  * Save the config via PUT request.
  */
-async function saveConfig() {
+async function showConfigDiffAndSave() {
   if (!currentEditContainer) return;
 
   const { config, launchParams } = collectFormConfig();
+  const changes = buildConfigDiff(currentEditConfig, config, currentEditLaunchParams, launchParams);
 
+  if (changes.length === 0) {
+    showToast('No changes detected', 'warning');
+    return;
+  }
+
+  let diffHtml = '<div class="space-y-1.5 max-h-96 overflow-y-auto">';
+  for (const change of changes) {
+    const arrow = '<span class="text-gray-500 mx-1">&rarr;</span>';
+    diffHtml += `<div class="flex items-center gap-2 text-sm py-1 px-2 rounded ${change.section === 'json' ? 'bg-gray-800' : 'bg-gray-750'}">
+      <span class="text-gray-400 font-mono text-xs">${escapeHtml(change.key)}</span>
+      <span class="text-red-400 line-through">${escapeHtml(String(change.old)) || '<em class="text-gray-600">empty</em>'}</span>
+      ${arrow}
+      <span class="text-green-400">${escapeHtml(String(change.new)) || '<em class="text-gray-600">empty</em>'}</span>
+    </div>`;
+  }
+  diffHtml += '</div>';
+
+  configModalBody.innerHTML = `
+    <div class="mb-4">
+      <h3 class="text-sm font-semibold text-yellow-400 mb-3">${changes.length} change${changes.length > 1 ? 's' : ''} detected</h3>
+      ${diffHtml}
+    </div>
+    <div class="flex gap-3 justify-end">
+      <button id="diff-cancel" class="px-4 py-2 rounded-md bg-gray-600 text-white hover:bg-gray-500 transition text-sm font-medium">Cancel</button>
+      <button id="diff-confirm" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-500 transition text-sm font-medium">Confirm Save</button>
+    </div>
+  `;
+
+  document.getElementById('diff-cancel').addEventListener('click', () => {
+    openConfigEditor(currentEditContainer.id, currentEditContainer.name, currentEditContainer.state, currentEditGame);
+  });
+  document.getElementById('diff-confirm').addEventListener('click', () => doSaveConfig(config, launchParams));
+}
+
+function buildConfigDiff(oldConfig, newConfig, oldLaunch, newLaunch) {
+  const changes = [];
+  const game = currentEditGame;
+  const meta = getGameMeta(game);
+
+  if (game === 'icarus') {
+    const oldSec = oldConfig?._sections || {};
+    const newSec = newConfig?._sections || {};
+    const allSections = new Set([...Object.keys(oldSec), ...Object.keys(newSec)]);
+    for (const section of allSections) {
+      const oldFields = oldSec[section] || {};
+      const newFields = newSec[section] || {};
+      const allKeys = new Set([...Object.keys(oldFields), ...Object.keys(newFields)]);
+      for (const key of allKeys) {
+        if (String(oldFields[key] || '') !== String(newFields[key] || '')) {
+          changes.push({ key: `${section}.${key}`, old: oldFields[key] || '', new: newFields[key] || '', section: 'ini' });
+        }
+      }
+    }
+  } else if (game === 'cs2' || game === 'minecraft') {
+    const oldEnv = oldConfig?.env || {};
+    const newEnv = newConfig?.env || {};
+    const allKeys = new Set([...Object.keys(oldEnv), ...Object.keys(newEnv)]);
+    for (const key of allKeys) {
+      if (String(oldEnv[key] || '') !== String(newEnv[key] || '')) {
+        changes.push({ key, old: oldEnv[key] || '', new: newEnv[key] || '', section: 'env' });
+      }
+    }
+  } else if (game === 'factorio' || game === 'terraria') {
+    const oldJson = oldConfig?.json || {};
+    const newJson = newConfig?.json || {};
+    const allKeys = new Set([...Object.keys(oldJson), ...Object.keys(newJson)]);
+    for (const key of allKeys) {
+      const oldVal = String(oldJson[key] ?? '');
+      const newVal = String(newJson[key] ?? '');
+      if (oldVal !== newVal) {
+        changes.push({ key, old: oldVal, new: newVal, section: 'json' });
+      }
+    }
+  }
+
+  if (oldLaunch && newLaunch) {
+    const allKeys = new Set([...Object.keys(oldLaunch), ...Object.keys(newLaunch)]);
+    for (const key of allKeys) {
+      if (String(oldLaunch[key] || '') !== String(newLaunch[key] || '')) {
+        changes.push({ key: `launch:${key}`, old: oldLaunch[key] || '', new: newLaunch[key] || '', section: 'launch' });
+      }
+    }
+  }
+
+  return changes;
+}
+
+async function doSaveConfig(config, launchParams) {
   configModalSave.disabled = true;
   configModalSave.textContent = 'Saving...';
 
@@ -1633,7 +1722,7 @@ async function saveConfig() {
 configModalClose.addEventListener('click', closeConfigEditor);
 configModalCancel.addEventListener('click', closeConfigEditor);
 configModalBackdrop.addEventListener('click', closeConfigEditor);
-configModalSave.addEventListener('click', saveConfig);
+configModalSave.addEventListener('click', showConfigDiffAndSave);
 
 document.getElementById('config-modal-backups').addEventListener('click', async function () {
   if (!currentEditContainer) return;
