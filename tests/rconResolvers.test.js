@@ -159,3 +159,64 @@ describe('Factorio RCON resolution', () => {
     expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 27015, 'fac-pass', '/players');
   });
 });
+
+describe('Icarus RCON resolution', () => {
+  beforeEach(() => {
+    mockGetContainer.mockReset();
+    mockSendRcon.mockReset();
+    mockSendRcon.mockResolvedValue('OK');
+  });
+
+  it('should use game-network IP when available with port mapping', async () => {
+    const networks = { 'game-network': { IPAddress: '172.18.0.2' } };
+    const ports = { '25575/tcp': [{ HostPort: '25575' }] };
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus', {}, ports, networks)),
+    });
+    await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(mockSendRcon).toHaveBeenCalledWith('172.18.0.2', 25575, undefined, 'status');
+  });
+
+  it('should resolve RCON port from port mapping', async () => {
+    const ports = { '25575/tcp': [{ HostPort: '25575' }] };
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus', {}, ports)),
+    });
+    await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 25575, undefined, 'status');
+  });
+
+  it('should fall back to SERVER_PORT env var when no port mapping', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus', { SERVER_PORT: '25575' })),
+    });
+    await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 25575, undefined, 'status');
+  });
+
+  it('should use ICARUS_RCON_PASSWORD env var', async () => {
+    const ports = { '25575/tcp': [{ HostPort: '25575' }] };
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus', { ICARUS_RCON_PASSWORD: 'icarus-pass' }, ports)),
+    });
+    await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 25575, 'icarus-pass', 'status');
+  });
+
+  it('should return 503 when no RCON port found', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus')),
+    });
+    const res = await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(res.status).toBe(503);
+  });
+
+  it('should match port 17777 as RCON port', async () => {
+    const ports = { '17777/tcp': [{ HostPort: '17777' }] };
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(makeInspect('icarus', {}, ports)),
+    });
+    await request(app).post('/api/containers/abc/rcon').send({ command: 'status' });
+    expect(mockSendRcon).toHaveBeenCalledWith('127.0.0.1', 17777, undefined, 'status');
+  });
+});

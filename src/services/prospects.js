@@ -27,6 +27,12 @@ function saveProspect(containerName, name, content) {
     throw err;
   }
 
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    const err = new Error('Prospect name must not contain path separators or traversal sequences');
+    err.code = 'EINVAL';
+    throw err;
+  }
+
   let parsed;
   try {
     parsed = typeof content === 'string' ? JSON.parse(content) : content;

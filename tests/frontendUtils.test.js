@@ -40,15 +40,28 @@ describe('memoryBarColor', () => {
     expect(memoryBarColor(59.9)).toBe('bg-green-500');
   });
 
-  it('should return yellow between 60% and 80%', () => {
+  it('should return green at exactly 59%', () => {
+    expect(memoryBarColor(59)).toBe('bg-green-500');
+  });
+
+  it('should return green at exactly 60% (uses >, not >=)', () => {
+    expect(memoryBarColor(60)).toBe('bg-green-500');
+  });
+
+  it('should return yellow between 61% and 80%', () => {
     expect(memoryBarColor(61)).toBe('bg-yellow-500');
     expect(memoryBarColor(70)).toBe('bg-yellow-500');
     expect(memoryBarColor(79)).toBe('bg-yellow-500');
   });
 
-  it('should return red at 80% and above', () => {
+  it('should return yellow at exactly 80% (uses >, not >=)', () => {
+    expect(memoryBarColor(80)).toBe('bg-yellow-500');
+  });
+
+  it('should return red above 80%', () => {
     expect(memoryBarColor(81)).toBe('bg-red-500');
     expect(memoryBarColor(100)).toBe('bg-red-500');
+    expect(memoryBarColor(200)).toBe('bg-red-500');
   });
 });
 
@@ -151,5 +164,49 @@ describe('formatDuration', () => {
 
   it('should format complex durations', () => {
     expect(formatDuration(93600)).toBe('1d 2h');
+  });
+
+  it('should handle exactly 1 hour', () => {
+    expect(formatDuration(3600)).toBe('1h');
+  });
+
+  it('should handle exactly 1 day', () => {
+    expect(formatDuration(86400)).toBe('1d');
+  });
+
+  it('should handle exactly 1 minute', () => {
+    expect(formatDuration(60)).toBe('1m');
+  });
+});
+
+describe('resources - formatBytes edge cases', () => {
+  const { parseStats } = require('../src/services/resources');
+
+  it('should handle empty stats object', () => {
+    const result = parseStats({});
+    expect(result).toBeDefined();
+  });
+
+  it('should handle missing memory_stats gracefully', () => {
+    const result = parseStats({});
+    expect(result).toBeDefined();
+  });
+
+  it('should handle zero CPU values without division by zero', () => {
+    const result = parseStats({
+      memory_stats: { usage: 100, limit: 200 },
+      cpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0, online_cpus: 1 },
+      precpu_stats: { cpu_usage: { total_usage: 0 }, system_cpu_usage: 0 },
+    });
+    expect(result).toBeDefined();
+  });
+
+  it('should handle missing networks key', () => {
+    const result = parseStats({
+      memory_stats: { usage: 100, limit: 200 },
+      cpu_stats: { cpu_usage: { total_usage: 100 }, system_cpu_usage: 500, online_cpus: 1 },
+      precpu_stats: { cpu_usage: { total_usage: 50 }, system_cpu_usage: 250 },
+    });
+    expect(result).toBeDefined();
   });
 });

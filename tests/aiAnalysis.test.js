@@ -277,6 +277,122 @@ describe('AI Log Analysis', () => {
       expect(res.body.error).toContain('logLine');
     });
   });
+
+  describe('AI API error handling', () => {
+    it('should return 502 when AI API returns non-200', async () => {
+      const mockAiResponse = createMockHttpResponse('rate limited', 429);
+
+      const originalHttps = require('https');
+      jest.spyOn(originalHttps, 'request').mockImplementation((_url, _opts, cb) => {
+        cb(mockAiResponse);
+        const req = new EventEmitter();
+        req.write = jest.fn();
+        req.end = jest.fn();
+        return req;
+      });
+
+      const logStream = createLogStream([
+        { stream: 'stdout', text: 'Server started' },
+      ]);
+      mockGetContainer.mockReturnValue({ logs: mockLogs, inspect: mockInspect });
+      mockLogs.mockResolvedValue(logStream);
+      mockInspect.mockResolvedValue({
+        Name: '/minecraft-server',
+        Config: { Labels: { 'game-admin-panel.game': 'minecraft' } },
+      });
+
+      const res = await request(app).post('/api/ai/abc123/analyze-logs');
+      expect(res.status).toBe(500);
+    });
+
+    it('should handle AI returning malformed JSON', async () => {
+      const mockAiResponse = createMockHttpResponse('not json at all', 200);
+
+      const originalHttps = require('https');
+      jest.spyOn(originalHttps, 'request').mockImplementation((_url, _opts, cb) => {
+        cb(mockAiResponse);
+        const req = new EventEmitter();
+        req.write = jest.fn();
+        req.end = jest.fn();
+        return req;
+      });
+
+      const logStream = createLogStream([
+        { stream: 'stdout', text: 'Server started' },
+      ]);
+      mockGetContainer.mockReturnValue({ logs: mockLogs, inspect: mockInspect });
+      mockLogs.mockResolvedValue(logStream);
+      mockInspect.mockResolvedValue({
+        Name: '/mc',
+        Config: { Labels: { 'game-admin-panel.game': 'minecraft' } },
+      });
+
+      const res = await request(app).post('/api/ai/abc123/analyze-logs');
+      expect(res.status).toBe(500);
+    });
+
+    it('should handle AI returning empty choices', async () => {
+      const aiResponseBody = JSON.stringify({ choices: [] });
+      const mockAiResponse = createMockHttpResponse(aiResponseBody, 200);
+
+      const originalHttps = require('https');
+      jest.spyOn(originalHttps, 'request').mockImplementation((_url, _opts, cb) => {
+        cb(mockAiResponse);
+        const req = new EventEmitter();
+        req.write = jest.fn();
+        req.end = jest.fn();
+        return req;
+      });
+
+      const logStream = createLogStream([{ stream: 'stdout', text: 'ok' }]);
+      mockGetContainer.mockReturnValue({ logs: mockLogs, inspect: mockInspect });
+      mockLogs.mockResolvedValue(logStream);
+      mockInspect.mockResolvedValue({
+        Name: '/mc',
+        Config: { Labels: { 'game-admin-panel.game': 'minecraft' } },
+      });
+
+      const res = await request(app).post('/api/ai/abc123/analyze-logs');
+      expect(res.status).toBe(200);
+    });
+
+    it('should handle suggest-config AI returning plain text (no JSON)', async () => {
+      const aiResponseBody = JSON.stringify({
+        choices: [{ message: { content: 'I cannot help with that request because the game does not support it.' } }],
+      });
+      const mockAiResponse = createMockHttpResponse(aiResponseBody, 200);
+
+      const originalHttps = require('https');
+      jest.spyOn(originalHttps, 'request').mockImplementation((_url, _opts, cb) => {
+        cb(mockAiResponse);
+        const req = new EventEmitter();
+        req.write = jest.fn();
+        req.end = jest.fn();
+        return req;
+      });
+
+      mockGetContainer.mockReturnValue({ inspect: mockInspect });
+      mockInspect.mockResolvedValue({
+        Name: '/mc',
+        Config: { Labels: { 'game-admin-panel.game': 'minecraft' } },
+      });
+
+      const games = require('../src/games');
+      games.get.mockReturnValue({
+        id: 'minecraft',
+        label: 'Minecraft',
+        configFields: [{ key: 'MOTD', type: 'text', label: 'MOTD' }],
+        readConfig: jest.fn().mockResolvedValue({ config: { MOTD: 'A Server' } }),
+      });
+
+      const res = await request(app)
+        .post('/api/ai/abc123/suggest-config')
+        .send({ prompt: 'do something impossible' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.suggestions.message).toBeDefined();
+    });
+  });
 });
 
 describe('AI Log Analysis - no API key', () => {

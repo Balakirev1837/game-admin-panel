@@ -138,4 +138,48 @@ describe('POST /api/containers/:id/prospects', () => {
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/already exists/i);
   });
+
+  it('should reject path traversal in name', async () => {
+    const res = await request(app)
+      .post('/api/containers/test-container/prospects')
+      .send({ name: '../../etc/passwd', content: { evil: true } });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('should reject path traversal with double-dot in middle', async () => {
+    const res = await request(app)
+      .post('/api/containers/test-container/prospects')
+      .send({ name: 'foo/../../bar', content: {} });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('should reject name with slashes', async () => {
+    const res = await request(app)
+      .post('/api/containers/test-container/prospects')
+      .send({ name: 'sub/dir', content: {} });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('should ignore non-JSON files in listing', async () => {
+    const dir = path.join(TMP_DIR, 'test-container', 'Saved', 'PlayerData', 'DedicatedServer', 'Prospects');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'readme.txt'), 'text');
+    fs.writeFileSync(path.join(dir, '.hidden'), 'stuff');
+    fs.writeFileSync(path.join(dir, 'valid.json'), '{}');
+
+    const res = await request(app).get('/api/containers/test-container/prospects');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([{ name: 'valid.json' }]);
+  });
+
+  it('should handle empty name string', async () => {
+    const res = await request(app)
+      .post('/api/containers/test-container/prospects')
+      .send({ name: '', content: {} });
+
+    expect(res.status).toBe(400);
+  });
 });

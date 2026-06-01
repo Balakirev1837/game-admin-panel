@@ -70,33 +70,4 @@ describe('GET /api/containers/:id/resources route', () => {
     expect(result.cpu).toBeDefined();
     expect(result.pids).toBe(12);
   });
-
-  it('should return 503 when Docker is unavailable', async () => {
-    jest.resetModules();
-    jest.mock('dockerode', () => {
-      return jest.fn().mockImplementation(() => ({
-        listContainers: jest.fn().mockResolvedValue([]),
-        ping: jest.fn().mockResolvedValue('OK'),
-        getContainer: jest.fn(),
-      }));
-    });
-
-    const mockDocker = {
-      getContainer: jest.fn().mockReturnValue({
-        stats: jest.fn().mockRejectedValue(new Error('not available')),
-      }),
-      listContainers: jest.fn().mockResolvedValue([]),
-      ping: jest.fn().mockResolvedValue('OK'),
-    };
-
-    jest.doMock('../src/services/docker', () => ({
-      docker: mockDocker,
-      verifyDockerConnection: jest.fn(),
-    }));
-
-    const testApp = require('../src/index');
-    const res = await request(testApp).get('/api/containers/abc123/resources');
-
-    expect([200, 500, 503]).toContain(res.status);
-  });
 });

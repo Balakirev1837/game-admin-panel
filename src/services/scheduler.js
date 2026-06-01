@@ -263,4 +263,4 @@ function startDailyDigest() {
   setInterval(check, 15 * 60 * 1000);
 }
 
-module.exports = { loadSchedules, addSchedule, removeSchedule, updateSchedule, parseCron, startScheduler, generateHealthDigest };
+module.exports = { loadSchedules, addSchedule, removeSchedule, updateSchedule, parseCron, startScheduler, generateHealthDigest, executeAction };
