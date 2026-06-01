@@ -52,18 +52,46 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
+```bash
+npm install --omit=dev   # Install on host (not inside Docker)
+npm test                 # 397 tests, 29 suites (uses --forceExit)
+```
+
+Docker build copies host `node_modules` into the image (no `npm install` inside Docker due to Ubuntu DNS issues):
 
 ```bash
-# Example:
-# npm install
-# npm test
+docker compose build admin-panel
+docker compose up -d admin-panel
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+**Monolithic Node.js + Express app** serving a static frontend (Tailwind CSS). No build step.
+
+- **Backend**: Express routes in `src/routes/`, services in `src/services/`, per-game adapters in `src/games/`
+- **Frontend**: `public/app.js` (~2400 lines, 14 sections) + `public/utils.js`, served statically
+- **Docker**: Mounts `/var/run/docker.sock` (Dockerode) and host game directory at `/host-games`
+- **Auth**: Bearer-token-only, in-memory store, enabled via `ADMIN_PASSWORD` env var
+- **Logging**: `pino` + `pino-http`, silent at `fatal` level in test env
+
+### Key Architecture Patterns
+
+- **Per-game adapters** (`src/games/`): Registry pattern. Each game exports `readConfig`, `writeConfig`, `validateConfig`, `resolveRcon`, `resolveRest`, `getPlayers`, `configFields`, `quickCommands`, `gameDataTypes`. Routes delegate to adapters.
+- **RCON pooling** (`src/services/rconPool.js`): `Map` of connections keyed by `host:port`, 60s idle timeout, auto-evict on auth failure.
+- **Server-side cache**: Container list cache (1.5s TTL) in `containers.js`, invalidated on Docker events via `onEvent` callback from `events.js`. Disk stats cache (30s TTL) in `host.js`.
+- **SSE events**: Docker event stream → SSE to frontend + `onEvent` callbacks for cache invalidation + ntfy.sh notifications.
+- **Config diff & backup**: Auto-backup before every config save. Diff modal shown for confirmation. Retention configurable.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- **Version bump**: Every push that changes code MUST bump `VERSION` (semver in repo root). Patch=bugfix, Minor=feature, Major=breaking.
+- **No comments in code** unless explicitly requested.
+- **Non-interactive shell flags**: Always use `cp -f`, `rm -rf`, `mv -f` etc.
+- **Test mocks**: Logger mocks need `child()` method: `const m = { info, warn, error, fatal }; m.child = () => m;`
+- **Test env vars**: Tests that set `process.env.GAME_CONFIG_ROOT` must do so BEFORE requiring `src/index` (scheduler/snapshots capture at module load).
+- **`jest.resetModules()`**: Avoid in integration tests that require the full app — causes logger mock mismatch.
+- **`API_BASE`**: Frontend uses `const API_BASE = '/api/containers'` — do not remove.
+- **`docker.getEvents()`**: Returns a Promise — `startEventListener` must `await` it.
+- **`NTFY_TOPIC`**: Must be declared in any module that uses it (events.js, scheduler.js each have their own).
+- **Dockerfile**: Runs as root (not `nodeuser`) — nodeuser can't access Docker socket.
+- **Path traversal protection**: `prospects.js` rejects names containing `..`, `/`, `\`.

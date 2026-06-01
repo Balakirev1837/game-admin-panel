@@ -94,6 +94,17 @@ The panel communicates with game containers through four methods:
 | GET | `/api/events` | Recent Docker events |
 | GET | `/api/ai/status` | AI analysis feature status |
 | POST | `/api/ai/:id/analyze-logs` | AI-powered log analysis |
+| POST | `/api/ai/:id/suggest-config` | AI config suggestions from natural language |
+| POST | `/api/ai/:id/explain-error` | AI error explanation (cached by signature) |
+| GET | `/api/schedules` | List scheduled actions |
+| POST | `/api/schedules` | Create a scheduled action |
+| PATCH | `/api/schedules/:id` | Update a schedule |
+| DELETE | `/api/schedules/:id` | Delete a schedule |
+| GET | `/api/containers/:id/snapshots` | List snapshots (Minecraft/Factorio) |
+| POST | `/api/containers/:id/snapshots` | Create a snapshot |
+| DELETE | `/api/containers/:id/snapshots/:name` | Delete a snapshot |
+| POST | `/api/containers/:id/snapshots/:name/restore` | Restore a snapshot |
+| GET | `/api/games` | Game metadata (adapters, config fields) |
 
 ## Adding a New Game Server
 
@@ -144,9 +155,13 @@ For the panel to edit configs, the game needs a config service in `src/services/
 |----------|---------|-------------|
 | `PORT` | `3000` | Host port for the panel |
 | `GAME_CONFIG_ROOT` | `/home/tyler/Docker/games` | Host path to game server directories (mounted at `/host-games`) |
+| `GAME_CONFIG_ROOT_HOST` | `/home/tyler/Docker/games` | Host path used for compose working dir resolution |
 | `ADMIN_PASSWORD` | *(unset)* | Set to enable authentication. Unset = open panel |
 | `ADMIN_USERNAME` | `admin` | Username for login |
 | `ICARUS_RCON_PASSWORD` | `dateniteroolz` | Default RCON password for Icarus |
+| `NTFY_TOPIC` | *(unset)* | ntfy.sh topic for container die/OOM notifications and daily digest |
+| `LOG_LEVEL` | `info` | Pino log level |
+| `BACKUP_RETENTION` | `10` | Number of config backups to keep per container |
 | `OPENROUTER_API_KEY` | *(unset)* | Set to enable AI log analysis via OpenRouter |
 | `AI_MODEL` | `openai/gpt-4.1-mini` | AI model for log analysis |
 | `AI_BASE_URL` | `https://openrouter.ai/api/v1` | AI API base URL (any OpenAI-compatible endpoint) |
@@ -155,7 +170,7 @@ For the panel to edit configs, the game needs a config service in `src/services/
 
 ```bash
 npm install
-npm test          # 240 tests, 23 suites
+npm test          # 397 tests, 29 suites
 npm start         # Run without Docker (needs local Docker socket)
 ```
 
