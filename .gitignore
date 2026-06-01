@@ -6,3 +6,6 @@ node_modules/
 .dolt/
 *.db
 .beads-credential-key
+*.json
+!package*.json
+!tsconfig.json

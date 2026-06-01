@@ -2014,14 +2014,14 @@ const prospectsModalTitle = document.getElementById('prospects-modal-title');
 let prospectsContainerId = null;
 let prospectsContainerName = null;
 let pendingProspectFile = null;
-let pendingProspectJSON = null;
+let pendingProspectText = null;
 
 function closeProspectsModal() {
   prospectsModal.classList.add('hidden');
   prospectsContainerId = null;
   prospectsContainerName = null;
   pendingProspectFile = null;
-  pendingProspectJSON = null;
+  pendingProspectText = null;
   prospectsModalUpload.disabled = false;
   prospectsModalUpload.textContent = 'Upload';
 }
@@ -2034,7 +2034,7 @@ function renderProspectsList(prospects) {
     <div class="mb-3">
       <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Server Prospects</h3>
       <ul class="space-y-1">
-        ${prospects.map(p => `<li class="text-sm text-gray-300 bg-gray-900 rounded px-3 py-1.5 font-mono">${p.name}</li>`).join('')}
+        ${prospects.map(p => `<li class="text-sm text-gray-300 bg-gray-900 rounded px-3 py-1.5 font-mono">${escapeHtml(p.name)}</li>`).join('')}
       </ul>
     </div>
   `;
@@ -2042,7 +2042,7 @@ function renderProspectsList(prospects) {
 
 function renderUploadArea() {
   const status = pendingProspectFile
-    ? `Selected: <span class="text-green-400">${pendingProspectFile.name}</span>`
+    ? `Selected: <span class="text-green-400">${escapeHtml(pendingProspectFile.name)}</span>`
     : 'Drop a .json prospect file here or click to browse';
   const statusColor = pendingProspectFile ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-dashed border-gray-500';
 
@@ -2052,11 +2052,7 @@ function renderUploadArea() {
       <div id="prospect-drop-zone" class="border-2 ${statusColor} rounded-lg p-6 text-center cursor-pointer text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors">
         <p>${status}</p>
       </div>
-      <p class="text-xs text-gray-500 mt-1">The file is validated client-side before upload to prevent corruption.</p>
-      <div id="prospect-name-area" class="${pendingProspectFile ? '' : 'hidden'} mt-3">
-        <label for="prospect-upload-name" class="block text-sm font-medium text-gray-300 mb-1">Prospect Name</label>
-        <input type="text" id="prospect-upload-name" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
-      </div>
+      <p class="text-xs text-gray-500 mt-1">File is uploaded byte-for-byte — no reformatting or renaming. The filename must match ProspectID inside the file.</p>
     </div>
   `;
 }
@@ -2068,7 +2064,7 @@ async function openProspectsModal(containerId, containerName) {
   prospectsModalUpload.disabled = true;
   prospectsModalUpload.textContent = 'Upload';
   pendingProspectFile = null;
-  pendingProspectJSON = null;
+  pendingProspectText = null;
 
   prospectsModalBody.innerHTML = '<div class="flex items-center justify-center py-8"><span class="text-gray-400 text-sm">Loading...</span></div>';
   prospectsModal.classList.remove('hidden');
@@ -2133,14 +2129,9 @@ function handleFileSelect(file) {
         return;
       }
       pendingProspectFile = file;
-      pendingProspectJSON = parsed;
+      pendingProspectText = reader.result;
 
-      const nameFromFile = file.name.replace(/\.json$/i, '');
       prospectsModalBody.innerHTML = renderProspectsList(pendingProspectList) + renderUploadArea();
-      const nameInput = document.getElementById('prospect-upload-name');
-      if (nameInput) {
-        nameInput.value = nameFromFile;
-      }
       prospectsModalUpload.disabled = false;
       setupDropZone();
       showToast('Prospect file validated successfully', 'success');
@@ -2155,14 +2146,9 @@ function handleFileSelect(file) {
 let pendingProspectList = []; // stored from list API
 
 prospectsModalUpload.addEventListener('click', async () => {
-  if (!pendingProspectFile || !pendingProspectJSON || !prospectsContainerId) return;
+  if (!pendingProspectFile || !pendingProspectText || !prospectsContainerId) return;
 
-  const nameInput = document.getElementById('prospect-upload-name');
-  const name = nameInput ? nameInput.value.trim() : '';
-  if (!name) {
-    showToast('Please enter a prospect name', 'error');
-    return;
-  }
+  const name = pendingProspectFile.name.replace(/\.json$/i, '');
 
   prospectsModalUpload.disabled = true;
   prospectsModalUpload.textContent = 'Uploading...';
@@ -2171,15 +2157,14 @@ prospectsModalUpload.addEventListener('click', async () => {
     const res = await fetch(`${API_BASE}/${prospectsContainerId}/prospects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, content: pendingProspectJSON }),
+      body: JSON.stringify({ name, content: pendingProspectText }),
     });
 
     const data = await res.json();
 
     if (res.ok && data.success) {
-      showToast(`Prospect "${name}.json" uploaded successfully!`, 'success');
+      showToast(`Prospect "${escapeHtml(name)}.json" uploaded successfully!`, 'success');
 
-      // Offer to set LoadProspect in config
       if (confirm(`Set LoadProspect to "${name}" so the server auto-loads this prospect on startup?`)) {
         try {
           const cfgRes = await fetch(`${API_BASE}/${prospectsContainerId}/config`);
