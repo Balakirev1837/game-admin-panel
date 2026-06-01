@@ -36,6 +36,9 @@ function escapeHtml(text) {
 }
 
 function gameLabel(game) {
+  if (typeof gameMetadata !== 'undefined' && gameMetadata[game]) {
+    return gameMetadata[game].label;
+  }
   const labels = {
     cs2: 'CS2',
     minecraft: 'Minecraft',
@@ -47,6 +50,9 @@ function gameLabel(game) {
 }
 
 function gameBadgeColor(game) {
+  if (typeof gameMetadata !== 'undefined' && gameMetadata[game]) {
+    return gameMetadata[game].badgeColor;
+  }
   const colors = {
     cs2: 'bg-orange-600',
     minecraft: 'bg-emerald-600',

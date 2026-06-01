@@ -22,6 +22,35 @@ describe('GET /api/version', () => {
   });
 });
 
+describe('GET /api/games', () => {
+  const app = require('../src/index');
+
+  it('should return list of supported games', async () => {
+    const res = await request(app).get('/api/games');
+    expect(res.status).toBe(200);
+    expect(res.body.games).toBeDefined();
+    expect(Array.isArray(res.body.games)).toBe(true);
+    expect(res.body.games.length).toBeGreaterThanOrEqual(5);
+
+    const ids = res.body.games.map(g => g.id);
+    expect(ids).toContain('icarus');
+    expect(ids).toContain('cs2');
+    expect(ids).toContain('minecraft');
+    expect(ids).toContain('factorio');
+    expect(ids).toContain('terraria');
+  });
+
+  it('should include config fields for each game', async () => {
+    const res = await request(app).get('/api/games');
+    const cs2 = res.body.games.find(g => g.id === 'cs2');
+    expect(cs2).toBeDefined();
+    expect(cs2.label).toBe('CS2');
+    expect(cs2.badgeColor).toBe('bg-orange-600');
+    expect(cs2.configFields.length).toBeGreaterThan(0);
+    expect(cs2.quickCommands.length).toBeGreaterThan(0);
+  });
+});
+
 describe('GET /api/containers/:id/resources route', () => {
   it('should return resource data from stats', async () => {
     const { parseStats } = require('../src/services/resources');

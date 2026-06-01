@@ -17,6 +17,7 @@ const playersRouter = require('./routes/players');
 const { router: eventsRouter } = require('./routes/events');
 const gameDataRouter = require('./routes/gameData');
 const aiRouter = require('./routes/ai');
+const games = require('./games');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,19 @@ app.get('/api/version', (_req, res) => {
   } catch {
     res.json({ version: 'unknown' });
   }
+});
+
+app.get('/api/games', (_req, res) => {
+  const gameList = games.list().map(g => ({
+    id: g.id,
+    label: g.label,
+    badgeColor: g.badgeColor,
+    consoleType: g.consoleType,
+    configFields: g.configFields,
+    quickCommands: g.quickCommands,
+    gameDataTypes: g.gameDataTypes || [],
+  }));
+  res.json({ games: gameList });
 });
 
 app.use('/api/auth', authRouter);

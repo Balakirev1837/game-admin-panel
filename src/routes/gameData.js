@@ -1,29 +1,9 @@
 const express = require('express');
-const path = require('path');
 const { docker } = require('../services/docker');
 const { readFileFromContainer, execInContainer } = require('../services/containerFiles');
+const games = require('../games');
 
 const router = express.Router();
-
-const GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT || '/host-games';
-
-const GAME_DATA_TYPES = {
-  minecraft: [
-    { type: 'whitelist', label: 'Whitelist', path: '/data/whitelist.json', format: 'json', listKey: null },
-    { type: 'ops', label: 'OPs', path: '/data/ops.json', format: 'json', listKey: null },
-    { type: 'banned-players', label: 'Banned Players', path: '/data/banned-players.json', format: 'json', listKey: null },
-    { type: 'server-properties', label: 'server.properties', path: '/data/server.properties', format: 'properties' },
-  ],
-  factorio: [
-    { type: 'saves', label: 'Save Files', path: '/factorio/saves', format: 'dir' },
-    { type: 'mods', label: 'Mods', path: '/factorio/mods', format: 'dir' },
-    { type: 'adminlist', label: 'Admin List', path: '/factorio/config/server-adminlist.json', format: 'json', listKey: null },
-    { type: 'banlist', label: 'Ban List', path: '/factorio/config/server-banlist.json', format: 'json', listKey: null },
-  ],
-  terraria: [
-    { type: 'worlds', label: 'World Files', path: '/root/.local/share/Terraria/Worlds', format: 'dir' },
-  ],
-};
 
 async function resolveContainerInfo(containerId) {
   try {
@@ -46,10 +26,12 @@ router.get('/:id/game-data/:type', async (req, res) => {
     const { name, game, running, id: containerId } = await resolveContainerInfo(id);
     if (!name) return res.status(404).json({ error: 'Container not found' });
 
-    const types = GAME_DATA_TYPES[game];
-    if (!types) return res.status(400).json({ error: `No game data for ${game}` });
+    const adapter = games.get(game);
+    if (!adapter || !adapter.gameDataTypes || adapter.gameDataTypes.length === 0) {
+      return res.status(400).json({ error: `No game data for ${game}` });
+    }
 
-    const typeDef = types.find(t => t.type === type);
+    const typeDef = adapter.gameDataTypes.find(t => t.type === type);
     if (!typeDef) return res.status(400).json({ error: `Unknown data type: ${type}` });
 
     if (!running) {

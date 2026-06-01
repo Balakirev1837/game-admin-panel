@@ -80,140 +80,39 @@ const CONFIG_FIELDS = [
     help: 'Allow non-admin players to delete prospects from the server.' },
 ];
 
-const CS2_CONFIG_FIELDS = [
-  { key: 'SRCDS_TOKEN', label: 'Steam Game Server Token', type: 'text', placeholder: '', help: 'Required. Get one at steamcommunity.com/dev/managegameservers' },
-  { key: 'CS2_SERVERNAME', label: 'Server Name', type: 'text', placeholder: 'My CS2 Server', help: 'Visible name in server browser' },
-  { key: 'CS2_RCONPW', label: 'RCON Password', type: 'text', placeholder: 'dateniteroolz', help: 'Password for remote console access' },
-  { key: 'CS2_PW', label: 'Server Password', type: 'text', placeholder: '', help: 'Password to join. Leave empty for no password.' },
-  { key: 'CS2_MAXPLAYERS', label: 'Max Players', type: 'number', placeholder: '10', min: '1', max: '64', help: 'Maximum number of players' },
-  { key: 'CS2_PORT', label: 'Server Port', type: 'number', placeholder: '27015', help: 'Game server listen port' },
-  { key: 'CS2_LAN', label: 'LAN Mode', type: 'select', options: ['0', '1'], help: '0 = LAN disabled, 1 = LAN enabled' },
-  { key: 'CS2_CHEATS', label: 'Cheats', type: 'select', options: ['0', '1'], help: '0 = disabled, 1 = enabled' },
-  { key: 'CS2_SERVER_HIBERNATE', label: 'Server Hibernate', type: 'select', options: ['0', '1'], help: 'Low CPU when empty. May cause crashes.' },
-  { key: 'CS2_GAMEALIAS', label: 'Game Mode Alias', type: 'select', options: ['', 'casual', 'competitive', 'deathmatch'], help: 'Predefined game type. Overrides GAMETYPE/GAMEMODE.' },
-  { key: 'CS2_GAMETYPE', label: 'Game Type', type: 'number', placeholder: '0', help: 'Used if GAMEALIAS not set' },
-  { key: 'CS2_GAMEMODE', label: 'Game Mode', type: 'number', placeholder: '1', help: 'Used if GAMEALIAS not set' },
-  { key: 'CS2_MAPGROUP', label: 'Map Group', type: 'text', placeholder: 'mg_active', help: 'Map pool. Ignored if using workshop maps.' },
-  { key: 'CS2_STARTMAP', label: 'Start Map', type: 'text', placeholder: 'de_inferno', help: 'Starting map. Ignored if using workshop maps.' },
-  { key: 'CS2_BOT_DIFFICULTY', label: 'Bot Difficulty', type: 'select', options: ['', '0', '1', '2', '3'], help: '0=easy, 1=normal, 2=hard, 3=expert' },
-  { key: 'CS2_BOT_QUOTA', label: 'Bot Quota', type: 'number', placeholder: '', help: 'Number of bots' },
-  { key: 'CS2_BOT_QUOTA_MODE', label: 'Bot Quota Mode', type: 'select', options: ['', 'fill', 'competitive'], help: 'How bots are managed' },
-  { key: 'TV_ENABLE', label: 'CSTV Enable', type: 'select', options: ['0', '1'], help: 'Enable SourceTV/CSTV broadcasting' },
-  { key: 'TV_PORT', label: 'CSTV Port', type: 'number', placeholder: '27020', help: 'SourceTV/CSTV port' },
-  { key: 'TV_AUTORECORD', label: 'CSTV Auto Record', type: 'select', options: ['0', '1'], help: 'Automatically record demos' },
-  { key: 'TV_PW', label: 'CSTV Password', type: 'text', placeholder: 'changeme', help: 'Password for CSTV clients' },
-  { key: 'TV_RELAY_PW', label: 'CSTV Relay Password', type: 'text', placeholder: 'changeme', help: 'Password for relay proxies' },
-  { key: 'CS2_LOG', label: 'Logging', type: 'select', options: ['on', 'off'], help: 'Enable/disable logging' },
-  { key: 'CS2_LOG_MONEY', label: 'Log Money', type: 'select', options: ['0', '1'], help: 'Log money events' },
-  { key: 'CS2_LOG_DETAIL', label: 'Log Detail', type: 'select', options: ['0', '1', '2', '3'], help: '0=disabled, 1=enemy, 2=friendly, 3=all' },
-  { key: 'CS2_LOG_ITEMS', label: 'Log Items', type: 'select', options: ['0', '1'], help: 'Log item events' },
-];
-
-const MINECRAFT_CONFIG_FIELDS = [
-  { key: 'EULA', label: 'Accept EULA', type: 'select', options: ['TRUE', 'FALSE'], help: 'Must be TRUE to run the server' },
-  { key: 'VERSION', label: 'Minecraft Version', type: 'text', placeholder: 'LATEST', help: 'e.g. LATEST, SNAPSHOT, 1.21.4' },
-  { key: 'TYPE', label: 'Server Type', type: 'select', options: ['VANILLA', 'PAPER', 'SPIGOT', 'FORGE', 'FABRIC'], help: 'Server software type' },
-  { key: 'MOTD', label: 'Message of the Day', type: 'text', placeholder: 'A Minecraft Server', help: 'Server description in multiplayer list' },
-  { key: 'DIFFICULTY', label: 'Difficulty', type: 'select', options: ['peaceful', 'easy', 'normal', 'hard'], help: 'Game difficulty' },
-  { key: 'MODE', label: 'Game Mode', type: 'select', options: ['survival', 'creative', 'adventure', 'spectator'], help: 'Default game mode' },
-  { key: 'LEVEL', label: 'World Name', type: 'text', placeholder: 'world', help: 'Name of the world save folder' },
-  { key: 'SEED', label: 'World Seed', type: 'text', placeholder: '', help: 'Seed for world generation' },
-  { key: 'MAX_PLAYERS', label: 'Max Players', type: 'number', placeholder: '20', min: '1', help: 'Maximum concurrent players' },
-  { key: 'VIEW_DISTANCE', label: 'View Distance', type: 'number', placeholder: '10', min: '2', max: '32', help: 'Chunk render distance' },
-  { key: 'ONLINE_MODE', label: 'Online Mode', type: 'select', options: ['true', 'false'], help: 'Verify players with Mojang servers' },
-  { key: 'MEMORY', label: 'Memory (RAM)', type: 'text', placeholder: '1024M', help: 'JVM heap size (e.g. 2G, 1024M)' },
-  { key: 'ENABLE_RCON', label: 'Enable RCON', type: 'select', options: ['true', 'false'], help: 'Required for graceful shutdown and panel console' },
-  { key: 'RCON_PASSWORD', label: 'RCON Password', type: 'text', placeholder: 'changeme', help: 'Password for remote console' },
-];
-
-const FACTORIO_CONFIG_FIELDS = [
-  { key: 'name', label: 'Server Name', type: 'text', placeholder: 'Factorio Server', help: 'Name of the server' },
-  { key: 'description', label: 'Description', type: 'text', placeholder: '', help: 'Server description' },
-  { key: 'max_players', label: 'Max Players', type: 'number', placeholder: '0', help: '0 means unlimited' },
-  { key: 'game_password', label: 'Game Password', type: 'text', placeholder: '', help: 'Password to join the server' },
-  { key: 'require_user_verification', label: 'Verify Users', type: 'select', options: ['true', 'false'], help: 'Verify players with Factorio.com' },
-  { key: 'visibility.public', label: 'Public Visibility', type: 'select', options: ['true', 'false'], help: 'Show in public server browser' },
-  { key: 'visibility.lan', label: 'LAN Visibility', type: 'select', options: ['true', 'false'], help: 'Show in LAN server browser' },
-  { key: 'auto_pause', label: 'Auto Pause', type: 'select', options: ['true', 'false'], help: 'Pause game when no players are connected' },
-  { key: 'non_blocking_saving', label: 'Non-blocking Saving', type: 'select', options: ['true', 'false'], help: 'Save in background (Linux only)' },
-  { key: 'rcon_password', label: 'RCON Password', type: 'text', placeholder: '', help: 'Password for remote console (saved to rconpw file)' },
-];
-
-const TERRARIA_CONFIG_FIELDS = [
-  { key: 'ServerName', label: 'Server Name', type: 'text', placeholder: 'Terraria Server', help: 'Name of the server' },
-  { key: 'ServerPassword', label: 'Server Password', type: 'text', placeholder: '', help: 'Password to join the server' },
-  { key: 'ServerPort', label: 'Server Port', type: 'number', placeholder: '7777', help: 'Game server port' },
-  { key: 'MaxSlots', label: 'Max Players', type: 'number', placeholder: '8', help: 'Maximum concurrent players' },
-  { key: 'RestApiEnabled', label: 'Enable REST API', type: 'select', options: ['true', 'false'], help: 'Required for panel console' },
-  { key: 'RestApiPort', label: 'REST API Port', type: 'number', placeholder: '7878', help: 'Port for REST API' },
-  { key: 'ApplicationRestTokens', label: 'REST API Token', type: 'text', placeholder: '', help: 'Token for REST API access' },
-];
-
-const CS2_RCON_QUICK_COMMANDS = [
-  { label: 'Status', cmd: 'status', immediate: true, help: 'Show server status and player list' },
-  { label: 'Change Map...', cmd: 'changelevel ', help: 'changelevel <mapname>' },
-  { label: 'Kick...', cmd: 'kick ', help: 'kick <player>' },
-  { label: 'Ban...', cmd: 'banid 0 ', help: 'banid 0 <steamid>' },
-  { label: 'Add Bot', cmd: 'bot_add', immediate: true, help: 'Add a bot' },
-  { label: 'Kick All Bots', cmd: 'bot_kick', immediate: true, help: 'Remove all bots' },
-  { label: 'Max Rounds...', cmd: 'mp_maxrounds ', help: 'Set max rounds' },
-  { label: 'Round Time...', cmd: 'mp_roundtime ', help: 'Set round time in minutes' },
-];
-
-const ICARUS_RCON_QUICK_COMMANDS = [
-  { label: 'Admin Login...', cmd: 'AdminLogin ', help: 'Gain admin privileges' },
-  { label: 'Resume Prospect', cmd: 'ResumeProspect', immediate: true, help: 'Resume the last prospect' },
-  { label: 'Load Prospect...', cmd: 'LoadProspect ', help: 'Load prospect by name' },
-  { label: 'Create Prospect', cmd: '__MODAL__', immediate: true, modal: 'prospect', help: 'Open prospect creation form' },
-  { label: 'Kick Player...', cmd: 'KickPlayer ', help: 'KickPlayer SteamId Reason' },
-  { label: 'Ban Player...', cmd: 'BanPlayer ', help: 'BanPlayer SteamId Reason' },
-  { label: 'Unban Player...', cmd: 'UnbanPlayer ', help: 'UnbanPlayer SteamId' },
-  { label: 'Return to Lobby', cmd: 'ReturnToLobby', immediate: true, help: 'Kick all players, return to lobby' },
-  { label: 'Lobby When Empty', cmd: 'ReturnToLobbyWhenEmpty', immediate: true, help: 'Return to lobby as soon as server is empty' },
-  { label: 'Admin Say...', cmd: 'AdminSay ', help: 'Broadcast message to all players' }
-];
-
-const MINECRAFT_RCON_QUICK_COMMANDS = [
-  { label: 'Status', cmd: 'list', immediate: true, help: 'List connected players' },
-  { label: 'Save All', cmd: 'save-all', immediate: true, help: 'Save the server to disk' },
-  { label: 'Kick...', cmd: 'kick ', help: 'kick <player> [reason]' },
-  { label: 'Ban...', cmd: 'ban ', help: 'ban <player> [reason]' },
-  { label: 'Pardon...', cmd: 'pardon ', help: 'pardon <player>' },
-  { label: 'Op...', cmd: 'op ', help: 'op <player>' },
-  { label: 'Deop...', cmd: 'deop ', help: 'deop <player>' },
-  { label: 'Whitelist Add...', cmd: 'whitelist add ', help: 'whitelist add <player>' },
-  { label: 'Whitelist Remove...', cmd: 'whitelist remove ', help: 'whitelist remove <player>' },
-  { label: 'Stop', cmd: 'stop', immediate: true, help: 'Gracefully stop the server' },
-];
-
-const FACTORIO_RCON_QUICK_COMMANDS = [
-  { label: 'Status', cmd: '/players', immediate: true, help: 'List connected players' },
-  { label: 'Save', cmd: '/server-save', immediate: true, help: 'Save the server to disk' },
-  { label: 'Kick...', cmd: '/kick ', help: '/kick <player> [reason]' },
-  { label: 'Ban...', cmd: '/ban ', help: '/ban <player> [reason]' },
-  { label: 'Unban...', cmd: '/unban ', help: '/unban <player>' },
-  { label: 'Admins', cmd: '/admins', immediate: true, help: 'List admins' },
-  { label: 'Promote...', cmd: '/promote ', help: '/promote <player>' },
-  { label: 'Demote...', cmd: '/demote ', help: '/demote <player>' },
-  { label: 'Time', cmd: '/time', immediate: true, help: 'Show game time' },
-];
-
-const TERRARIA_REST_QUICK_COMMANDS = [
-  { label: 'Status', cmd: 'playing', immediate: true, help: 'List connected players' },
-  { label: 'Save', cmd: 'save', immediate: true, help: 'Save the server to disk' },
-  { label: 'Kick...', cmd: 'kick ', help: 'kick <player> [reason]' },
-  { label: 'Ban...', cmd: 'ban ', help: 'ban <player> [reason]' },
-  { label: 'Broadcast...', cmd: 'broadcast ', help: 'broadcast <message>' },
-  { label: 'Time', cmd: 'time', immediate: true, help: 'Show game time' },
-  { label: 'Off', cmd: 'off', immediate: true, help: 'Gracefully stop the server' },
-];
-
 // Track the current container being edited
 let currentEditContainer = null;
 let currentEditGame = null;
 // Store the raw config/launchParams from the API so we can preserve sections not shown in the form
 let currentEditConfig = null;
 let currentEditLaunchParams = null;
+
+// Game metadata loaded from /api/games
+let gameMetadata = {};
+
+async function loadGameMetadata() {
+  try {
+    const res = await fetch('/api/games');
+    if (res.ok) {
+      const data = await res.json();
+      for (const g of data.games) {
+        gameMetadata[g.id] = g;
+      }
+    }
+  } catch {}
+}
+
+function getGameMeta(gameId) {
+  return gameMetadata[gameId] || {
+    id: gameId,
+    label: gameId,
+    badgeColor: 'bg-blue-600',
+    consoleType: 'rcon',
+    configFields: CONFIG_FIELDS,
+    quickCommands: [],
+    gameDataTypes: [],
+  };
+}
 
 // Per-container RCON session state
 const rconSessions = {};
@@ -324,10 +223,7 @@ function createRconPanel(containerId, game) {
   const quickRow = document.createElement('div');
   quickRow.className = 'flex flex-wrap gap-2 mt-1';
 
-  const quickCommands = (game === 'cs2') ? CS2_RCON_QUICK_COMMANDS :
-                        (game === 'minecraft') ? MINECRAFT_RCON_QUICK_COMMANDS :
-                        (game === 'factorio') ? FACTORIO_RCON_QUICK_COMMANDS :
-                        ICARUS_RCON_QUICK_COMMANDS;
+  const quickCommands = (getGameMeta(game).quickCommands || []);
 
   quickCommands.forEach(qc => {
     const btn = document.createElement('button');
@@ -465,7 +361,7 @@ function createRestPanel(containerId) {
   const quickRow = document.createElement('div');
   quickRow.className = 'flex flex-wrap gap-2 mt-1';
 
-  TERRARIA_REST_QUICK_COMMANDS.forEach(qc => {
+  (getGameMeta(game).quickCommands || []).forEach(qc => {
     const btn = document.createElement('button');
     btn.className = 'px-2 py-1 bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded text-xs text-gray-300 transition-colors';
     btn.textContent = qc.label;
@@ -656,17 +552,9 @@ function renderContainerCard(container) {
   const badgeColor = statusColor(container.state);
   const session = getRconSession(container.id);
   const game = container.game || 'icarus';
-  const gameLabel = game === 'cs2' ? 'CS2' : 
-                    game === 'minecraft' ? 'Minecraft' :
-                    game === 'factorio' ? 'Factorio' :
-                    game === 'terraria' ? 'Terraria' :
-                    game === 'icarus' ? 'Icarus' : game;
-  
-  const gameBadgeColor = game === 'cs2' ? 'bg-orange-600' : 
-                         game === 'minecraft' ? 'bg-emerald-600' :
-                         game === 'factorio' ? 'bg-red-600' :
-                         game === 'terraria' ? 'bg-green-600' :
-                         'bg-blue-600';
+  const meta = getGameMeta(game);
+  const gameLabel = meta.label;
+  const gameBadgeColor = meta.badgeColor;
 
   const card = document.createElement('div');
   card.className =
@@ -711,7 +599,7 @@ function renderContainerCard(container) {
       <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
         Server Config
       </button>
-      ${GAME_DATA_TYPES[game] ? `<button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">Game Data</button>` : ''}
+      ${(meta.gameDataTypes && meta.gameDataTypes.length > 0) ? `<button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">Game Data</button>` : ''}
       ${prospectsBtnHtml}
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
@@ -1152,26 +1040,8 @@ function fetchAllResources() {
 
 // ===================== Game Data =====================
 
-const GAME_DATA_TYPES = {
-  minecraft: [
-    { type: 'whitelist', label: 'Whitelist' },
-    { type: 'ops', label: 'OPs' },
-    { type: 'banned-players', label: 'Banned Players' },
-    { type: 'server-properties', label: 'server.properties' },
-  ],
-  factorio: [
-    { type: 'saves', label: 'Save Files' },
-    { type: 'mods', label: 'Mods' },
-    { type: 'adminlist', label: 'Admin List' },
-    { type: 'banlist', label: 'Ban List' },
-  ],
-  terraria: [
-    { type: 'worlds', label: 'World Files' },
-  ],
-};
-
 async function loadGameData(containerId, game, el) {
-  const types = GAME_DATA_TYPES[game];
+  const types = (getGameMeta(game).gameDataTypes || []);
   if (!types || types.length === 0) {
     el.innerHTML = '<div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-600">No game data available for this game</div>';
     return;
@@ -1360,7 +1230,7 @@ function buildCs2ConfigForm(config) {
   ];
 
   const fieldMap = {};
-  CS2_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+  (getGameMeta('cs2').configFields || []).forEach(f => { fieldMap[f.key] = f; });
 
   groups.forEach(group => {
     html += '<div class="mb-4">';
@@ -1389,7 +1259,7 @@ function buildMinecraftConfigForm(config) {
   ];
 
   const fieldMap = {};
-  MINECRAFT_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+  (getGameMeta('minecraft').configFields || []).forEach(f => { fieldMap[f.key] = f; });
 
   groups.forEach(group => {
     html += '<div class="mb-4">';
@@ -1418,7 +1288,7 @@ function buildFactorioConfigForm(config) {
   ];
 
   const fieldMap = {};
-  FACTORIO_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+  (getGameMeta('factorio').configFields || []).forEach(f => { fieldMap[f.key] = f; });
 
   groups.forEach(group => {
     html += '<div class="mb-4">';
@@ -1449,7 +1319,7 @@ function buildTerrariaConfigForm(config) {
   ];
 
   const fieldMap = {};
-  TERRARIA_CONFIG_FIELDS.forEach(f => { fieldMap[f.key] = f; });
+  (getGameMeta('terraria').configFields || []).forEach(f => { fieldMap[f.key] = f; });
 
   groups.forEach(group => {
     html += '<div class="mb-4">';
@@ -2181,6 +2051,7 @@ window.fetch = function (url, options = {}) {
 };
 
 // Initial fetch
+loadGameMetadata();
 checkSession().then(authed => { if (authed) fetchContainers(); });
 
 // Load version
