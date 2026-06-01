@@ -173,6 +173,8 @@ function startScheduler() {
   }, 30000);
 }
 
+const NTFY_TOPIC = process.env.NTFY_TOPIC || null;
+
 if (process.env.NODE_ENV !== 'test') {
   startScheduler();
   startDailyDigest();

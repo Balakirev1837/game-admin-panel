@@ -38,11 +38,11 @@ async function sendNtfyNotification(event) {
   }
 }
 
-function startEventListener() {
+async function startEventListener() {
   if (eventStream || !docker) return;
 
   try {
-    eventStream = docker.getEvents({ filters: { type: ['container'] } });
+    eventStream = await docker.getEvents({ filters: { type: ['container'] } });
 
     eventStream.on('data', (chunk) => {
       try {
