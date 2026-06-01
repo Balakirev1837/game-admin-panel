@@ -62,11 +62,13 @@ async function getMinecraftPlayers(info) {
 async function getFactorioPlayers(info) {
   const host = findRconHost(info);
   const port = 27015;
-  const containerName = info.Name.replace(/^\//, '');
   try {
-    const factorioConfig = require('../services/factorioConfig');
-    const config = factorioConfig.readConfig(containerName);
-    const password = config.json.rcon_password || undefined;
+    const { readFileFromContainer } = require('../services/containerFiles');
+    let password = undefined;
+    try {
+      const rconData = await readFileFromContainer(info.Id, '/factorio/config/rconpw');
+      if (rconData) password = rconData.trim();
+    } catch {}
     const response = await sendRconCommand(host, port, password, '/players');
     const players = [];
     const lines = response.split('\n');
@@ -88,26 +90,37 @@ async function getFactorioPlayers(info) {
 
 async function getTerrariaPlayers(info) {
   const host = findRconHost(info);
-  const terrariaConfig = require('../services/terrariaConfig');
-  const containerName = info.Name.replace(/^\//, '');
-  const config = terrariaConfig.readConfig(containerName);
-  const restPort = config.json.RestApiPort || 7878;
-  const tokens = config.json.ApplicationRestTokens;
-  const token = Array.isArray(tokens) && tokens.length > 0
-    ? (typeof tokens[0] === 'string' ? tokens[0] : tokens[0].value || '')
-    : '';
-  if (!token) return [];
   try {
-    const http = require('http');
-    const response = await new Promise((resolve, reject) => {
-      http.get(`http://${host}:${restPort}/v3/players/list?token=${token}`, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => resolve(JSON.parse(data)));
-      }).on('error', reject);
-    });
-    if (!response.players) return [];
-    return response.players.map(p => ({ name: p.nickname || p.name || p.username || String(p) }));
+    const { readFileFromContainer } = require('../services/containerFiles');
+    const configPaths = ['/tshock/config.json', '/root/.local/share/Terraria/tshock/config.json'];
+    let config = {};
+    for (const p of configPaths) {
+      const data = await readFileFromContainer(info.Id, p);
+      if (data) {
+        try { config = JSON.parse(data); } catch {}
+        break;
+      }
+    }
+    const restPort = config.RestApiPort || 7878;
+    const tokens = config.ApplicationRestTokens;
+    const token = Array.isArray(tokens) && tokens.length > 0
+      ? (typeof tokens[0] === 'string' ? tokens[0] : tokens[0].value || '')
+      : '';
+    if (!token) return [];
+    try {
+      const http = require('http');
+      const response = await new Promise((resolve, reject) => {
+        http.get(`http://${host}:${restPort}/v3/players/list?token=${token}`, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => resolve(JSON.parse(data)));
+        }).on('error', reject);
+      });
+      if (!response.players) return [];
+      return response.players.map(p => ({ name: p.nickname || p.name || p.username || String(p) }));
+    } catch {
+      return [];
+    }
   } catch {
     return [];
   }

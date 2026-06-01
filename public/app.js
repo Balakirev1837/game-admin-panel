@@ -2273,9 +2273,9 @@ setInterval(fetchAllPlayers, 15000);
             } else if (event.action === 'start' && event.name) {
               showToast(`${event.name} started`, 'success');
             }
-    } catch (err) {
-      sections.push(`<div class="text-red-400"><span class="font-medium">${t.label}:</span> ${escapeHtml(err.message)}</div>`);
-    }
+          } catch (err) {
+            console.warn('Failed to parse SSE event:', err);
+          }
         }
         read();
       }).catch(() => setTimeout(connectEvents, 5000));

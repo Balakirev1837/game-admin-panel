@@ -12,6 +12,7 @@ services:
     environment:
       - PORT=${PORT:-3000}
       - GAME_CONFIG_ROOT=/host-games
+      - GAME_CONFIG_ROOT_HOST=${GAME_CONFIG_ROOT:-/home/tyler/Docker/games}
       - ICARUS_RCON_PASSWORD=${ICARUS_RCON_PASSWORD:-dateniteroolz}
     restart: unless-stopped
 

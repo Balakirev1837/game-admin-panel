@@ -2,6 +2,7 @@ const request = require('supertest');
 
 const mockGetContainer = jest.fn();
 const mockSendRcon = jest.fn();
+const mockReadFileFromContainer = jest.fn();
 
 jest.mock('dockerode', () => {
   return jest.fn().mockImplementation(() => ({
@@ -15,18 +16,15 @@ jest.mock('../src/services/rcon', () => ({
   sendRconCommand: mockSendRcon,
 }));
 
-jest.mock('../src/services/factorioConfig', () => ({
-  readConfig: jest.fn().mockReturnValue({ json: {} }),
-}));
-
-jest.mock('../src/services/terrariaConfig', () => ({
-  readConfig: jest.fn().mockReturnValue({ json: { RestApiPort: 7878, ApplicationRestTokens: [] } }),
+jest.mock('../src/services/containerFiles', () => ({
+  readFileFromContainer: mockReadFileFromContainer,
 }));
 
 const app = require('../src/index');
 
 function mockInspect(game, running = true) {
   return {
+    Id: 'abc123',
     Name: `/${game}-server`,
     Config: {
       Labels: { 'game-admin-panel.game': game },
@@ -41,6 +39,7 @@ describe('GET /api/containers/:id/players', () => {
   beforeEach(() => {
     mockGetContainer.mockReset();
     mockSendRcon.mockReset();
+    mockReadFileFromContainer.mockReset();
   });
 
   it('should return empty array for stopped containers', async () => {
@@ -135,5 +134,79 @@ describe('GET /api/containers/:id/players', () => {
     expect(res.status).toBe(200);
     expect(res.body.players).toEqual([]);
     expect(res.body.game).toBe('icarus');
+  });
+
+  it('should parse Factorio players via container file read', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(mockInspect('factorio')),
+    });
+    mockReadFileFromContainer.mockResolvedValue('myrconpw');
+    mockSendRcon.mockResolvedValue('Players online:\n  Alice (online)\n  Bob (online)\n  Charlie');
+
+    const res = await request(app).get('/api/containers/abc/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body.players).toHaveLength(2);
+    expect(res.body.players[0].name).toBe('Alice');
+    expect(res.body.players[1].name).toBe('Bob');
+    expect(mockReadFileFromContainer).toHaveBeenCalledWith('abc123', '/factorio/config/rconpw');
+  });
+
+  it('should handle Factorio RCON read failure gracefully', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(mockInspect('factorio')),
+    });
+    mockReadFileFromContainer.mockRejectedValue(new Error('container error'));
+
+    const res = await request(app).get('/api/containers/abc/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body.players).toEqual([]);
+  });
+
+  it('should parse Terraria players via container file read', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(mockInspect('terraria')),
+    });
+    mockReadFileFromContainer.mockResolvedValue(JSON.stringify({
+      RestApiPort: 7878,
+      ApplicationRestTokens: ['test-token-123'],
+    }));
+
+    const http = require('http');
+    const mockGet = jest.fn((url, cb) => {
+      const res = {
+        on: (evt, handler) => {
+          if (evt === 'data') handler(JSON.stringify({ players: [{ nickname: 'Alice' }, { nickname: 'Bob' }] }));
+          if (evt === 'end') handler();
+        }
+      };
+      cb(res);
+      return { on: jest.fn() };
+    });
+    jest.spyOn(http, 'get').mockImplementation(mockGet);
+
+    const res = await request(app).get('/api/containers/abc/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body.players).toHaveLength(2);
+    expect(res.body.players[0].name).toBe('Alice');
+
+    http.get.mockRestore();
+  });
+
+  it('should handle Terraria with no REST token', async () => {
+    mockGetContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue(mockInspect('terraria')),
+    });
+    mockReadFileFromContainer.mockResolvedValue(JSON.stringify({
+      RestApiPort: 7878,
+      ApplicationRestTokens: [],
+    }));
+
+    const res = await request(app).get('/api/containers/abc/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body.players).toEqual([]);
   });
 });

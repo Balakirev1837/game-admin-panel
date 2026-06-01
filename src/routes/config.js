@@ -10,6 +10,7 @@ const { docker } = require('../services/docker');
 const router = express.Router();
 
 const GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT || '/host-games';
+const GAME_CONFIG_ROOT_HOST = process.env.GAME_CONFIG_ROOT_HOST || '/home/tyler/Docker/games';
 
 async function resolveContainerInfo(containerId) {
   try {
@@ -22,7 +23,7 @@ async function resolveContainerInfo(containerId) {
     let composeDir = null;
     const composeWorkingDir = labels['com.docker.compose.project.working_dir'];
     if (composeWorkingDir) {
-      composeDir = composeWorkingDir.replace(/^\/home\/[^/]+\/Docker\/games/, GAME_CONFIG_ROOT);
+      composeDir = composeWorkingDir.replace(GAME_CONFIG_ROOT_HOST, GAME_CONFIG_ROOT);
     }
 
     return { name, game, info, composeDir };
@@ -80,7 +81,7 @@ router.put('/:id/config', async (req, res) => {
     const { name, game, info, composeDir } = await resolveContainerInfo(id);
     const containerName = name || id;
 
-    backup.createBackup(containerName, game);
+    await backup.createBackup(containerName, game, info);
 
     if (game === 'cs2') {
       const validation = cs2Config.validateEnvData(config);

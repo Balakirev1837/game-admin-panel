@@ -5,6 +5,7 @@ const os = require('os');
 
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'config-api-test-'));
 const originalRoot = process.env.GAME_CONFIG_ROOT;
+const originalRootHost = process.env.GAME_CONFIG_ROOT_HOST;
 
 const mockGetContainer = jest.fn();
 const mockReadFileFromContainer = jest.fn();
@@ -47,10 +48,13 @@ function writeFile(containerName, filePath, content) {
 
 beforeAll(() => {
   process.env.GAME_CONFIG_ROOT = TMP_DIR;
+  process.env.GAME_CONFIG_ROOT_HOST = TMP_DIR;
 });
 
 afterAll(() => {
   process.env.GAME_CONFIG_ROOT = originalRoot;
+  if (originalRootHost) process.env.GAME_CONFIG_ROOT_HOST = originalRootHost;
+  else delete process.env.GAME_CONFIG_ROOT_HOST;
   fs.rmSync(TMP_DIR, { recursive: true, force: true });
 });
 

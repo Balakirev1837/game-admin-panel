@@ -1,36 +1,71 @@
 const fs = require('fs');
 const path = require('path');
 
-const GAME_CONFIG_ROOT = process.env.GAME_CONFIG_ROOT || '/host-games';
-const MAX_BACKUPS = parseInt(process.env.MAX_BACKUPS, 10) || 10;
-
-function getBackupDir(containerName) {
-  return path.join(GAME_CONFIG_ROOT, containerName, 'backups');
+function getGameConfigRoot() {
+  return process.env.GAME_CONFIG_ROOT || '/host-games';
 }
 
-function getConfigPath(containerName, game) {
-  const base = path.join(GAME_CONFIG_ROOT, containerName);
+function getMaxBackups() {
+  return parseInt(process.env.MAX_BACKUPS, 10) || 10;
+}
+
+const CONTAINER_CONFIG_GAMES = new Set(['factorio', 'terraria']);
+
+function getBackupDir(containerName) {
+  return path.join(getGameConfigRoot(), containerName, 'backups');
+}
+
+function getHostConfigPath(containerName, game) {
+  const base = path.join(getGameConfigRoot(), containerName);
   switch (game) {
     case 'cs2': return path.join(base, '.env');
     case 'minecraft': return path.join(base, '.env');
-    case 'factorio': return path.join(base, 'config', 'server-settings.json');
-    case 'terraria': return path.join(base, 'tshock', 'config.json');
     default: return path.join(base, 'Saved', 'Config', 'WindowsServer', 'ServerSettings.ini');
   }
 }
 
-function createBackup(containerName, game) {
-  const configPath = getConfigPath(containerName, game);
-  if (!fs.existsSync(configPath)) return null;
+async function readConfigFromContainer(containerId, game) {
+  const { readFileFromContainer } = require('./containerFiles');
+  if (game === 'factorio') {
+    const data = await readFileFromContainer(containerId, '/factorio/config/server-settings.json');
+    return data;
+  } else if (game === 'terraria') {
+    const paths = ['/tshock/config.json', '/root/.local/share/Terraria/tshock/config.json'];
+    for (const p of paths) {
+      const data = await readFileFromContainer(containerId, p);
+      if (data) return data;
+    }
+  }
+  return null;
+}
 
+async function createBackup(containerName, game, info) {
   const backupDir = getBackupDir(containerName);
   fs.mkdirSync(backupDir, { recursive: true });
 
-  const ext = path.extname(configPath) || '.ini';
+  let configContent;
+  let ext;
+
+  if (CONTAINER_CONFIG_GAMES.has(game)) {
+    if (!info || !info.State || info.State.Running !== true) {
+      return null;
+    }
+    const containerId = info.Id || containerName;
+    configContent = await readConfigFromContainer(containerId, game);
+    ext = '.json';
+  } else {
+    const configPath = getHostConfigPath(containerName, game);
+    if (!fs.existsSync(configPath)) return null;
+    configContent = fs.readFileSync(configPath, 'utf-8');
+    ext = path.extname(configPath) || '.ini';
+  }
+
+  if (configContent === null) return null;
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupFile = path.join(backupDir, `config.${timestamp}${ext}`);
 
-  fs.copyFileSync(configPath, backupFile);
+  fs.writeFileSync(backupFile, configContent);
   pruneBackups(containerName);
 
   return {
@@ -68,7 +103,7 @@ function restoreBackup(containerName, game, backupFile) {
     throw new Error('Backup file not found');
   }
 
-  const configPath = getConfigPath(containerName, game);
+  const configPath = getHostConfigPath(containerName, game);
   const configDir = path.dirname(configPath);
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
@@ -86,7 +121,7 @@ function pruneBackups(containerName) {
     .filter(f => f.startsWith('config.'))
     .sort();
 
-  while (files.length > MAX_BACKUPS) {
+  while (files.length > getMaxBackups()) {
     const oldest = files.shift();
     fs.unlinkSync(path.join(backupDir, oldest));
   }

@@ -24,13 +24,13 @@ describe('backup service', () => {
     expect(result).toEqual([]);
   });
 
-  it('should create a backup before write', () => {
+  it('should create a backup before write', async () => {
     const containerDir = path.join(tmpDir, 'test-container');
     fs.mkdirSync(containerDir, { recursive: true });
     fs.writeFileSync(path.join(containerDir, '.env'), 'CS2_SERVERNAME=Test\n');
 
     const backup = require('../src/services/backup');
-    const result = backup.createBackup('test-container', 'cs2');
+    const result = await backup.createBackup('test-container', 'cs2');
     expect(result).toBeDefined();
     expect(result.file).toMatch(/^config\.\d{4}-\d{2}-\d{2}T/);
     expect(result.size).toBeGreaterThan(0);
@@ -39,13 +39,13 @@ describe('backup service', () => {
     expect(backups).toHaveLength(1);
   });
 
-  it('should restore a backup', () => {
+  it('should restore a backup', async () => {
     const containerDir = path.join(tmpDir, 'test-container');
     fs.mkdirSync(containerDir, { recursive: true });
     fs.writeFileSync(path.join(containerDir, '.env'), 'CS2_SERVERNAME=Original\n');
 
     const backup = require('../src/services/backup');
-    const b = backup.createBackup('test-container', 'cs2');
+    const b = await backup.createBackup('test-container', 'cs2');
 
     fs.writeFileSync(path.join(containerDir, '.env'), 'CS2_SERVERNAME=Modified\n');
 
@@ -61,7 +61,7 @@ describe('backup service', () => {
       .toThrow('Backup file not found');
   });
 
-  it('should prune old backups beyond MAX_BACKUPS', () => {
+  it('should prune old backups beyond MAX_BACKUPS', async () => {
     process.env.MAX_BACKUPS = '3';
     jest.resetModules();
 
@@ -72,7 +72,7 @@ describe('backup service', () => {
 
     for (let i = 0; i < 5; i++) {
       fs.writeFileSync(path.join(containerDir, '.env'), `Version ${i}\n`);
-      backup.createBackup('test-container', 'cs2');
+      await backup.createBackup('test-container', 'cs2');
     }
 
     const backups = backup.listBackups('test-container');
@@ -81,25 +81,39 @@ describe('backup service', () => {
     delete process.env.MAX_BACKUPS;
   });
 
-  it('should return null when no config file exists', () => {
+  it('should return null when no config file exists', async () => {
     const backup = require('../src/services/backup');
-    const result = backup.createBackup('no-config-here', 'cs2');
+    const result = await backup.createBackup('no-config-here', 'cs2');
     expect(result).toBeNull();
   });
 
-  it('should handle icarus config path', () => {
+  it('should handle icarus config path', async () => {
     const containerDir = path.join(tmpDir, 'icarus-server');
     const configDir = path.join(containerDir, 'Saved', 'Config', 'WindowsServer');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(path.join(configDir, 'ServerSettings.ini'), '[ServerSettings]\nMaxPlayers=8\n');
 
     const backup = require('../src/services/backup');
-    const result = backup.createBackup('icarus-server', 'icarus');
+    const result = await backup.createBackup('icarus-server', 'icarus');
     expect(result).toBeDefined();
     expect(result.file).toMatch(/\.ini$/);
 
     const backups = backup.listBackups('icarus-server');
     expect(backups).toHaveLength(1);
     expect(backups[0].file).toMatch(/\.ini$/);
+  });
+
+  it('should return null for Factorio when container is stopped', async () => {
+    const backup = require('../src/services/backup');
+    const info = { Id: 'abc123', State: { Running: false } };
+    const result = await backup.createBackup('factorio-server', 'factorio', info);
+    expect(result).toBeNull();
+  });
+
+  it('should return null for Terraria when container is stopped', async () => {
+    const backup = require('../src/services/backup');
+    const info = { Id: 'abc123', State: { Running: false } };
+    const result = await backup.createBackup('terraria-server', 'terraria', info);
+    expect(result).toBeNull();
   });
 });

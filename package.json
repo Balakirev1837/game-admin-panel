@@ -11,11 +11,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dockerode": "^5.0.0",
     "express": "^5.2.1",
-    "express-session": "^1.19.0",
     "srcds-rcon": "^2.2.1",
     "tar": "^7.5.15"
   },

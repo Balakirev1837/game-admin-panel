@@ -5,7 +5,6 @@ const router = express.Router();
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 const sessions = new Map();
 const SESSION_TTL = 24 * 60 * 60 * 1000;
@@ -17,9 +16,7 @@ function isEnabled() {
 function authMiddleware(req, res, next) {
   if (!isEnabled()) return next();
 
-  const token = req.headers['x-session-token'] ||
-    (req.cookies && req.cookies['admin-session']) ||
-    null;
+  const token = req.headers['x-session-token'] || null;
 
   if (!token || !sessions.has(token)) {
     return res.status(401).json({ error: 'Authentication required' });
@@ -52,23 +49,13 @@ router.post('/login', (req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { user: { name: username }, createdAt: Date.now() });
 
-  res.cookie('admin-session', token, {
-    httpOnly: true,
-    sameSite: 'strict',
-    maxAge: SESSION_TTL,
-  });
-
   return res.json({ authenticated: true, user: { name: username }, token });
 });
 
 router.post('/logout', (req, res) => {
-  const token = req.headers['x-session-token'] ||
-    (req.cookies && req.cookies['admin-session']) ||
-    null;
-
+  const token = req.headers['x-session-token'] || null;
   if (token) sessions.delete(token);
 
-  res.clearCookie('admin-session');
   return res.json({ success: true });
 });
 
@@ -77,9 +64,7 @@ router.get('/session', (req, res) => {
     return res.json({ authenticated: true, user: { name: 'admin' }, authRequired: false });
   }
 
-  const token = req.headers['x-session-token'] ||
-    (req.cookies && req.cookies['admin-session']) ||
-    null;
+  const token = req.headers['x-session-token'] || null;
 
   if (!token || !sessions.has(token)) {
     return res.json({ authenticated: false, authRequired: true });
