@@ -1,4 +1,25 @@
-const API_BASE = '/api/containers';
+// ============================================================================
+// TABLE OF CONTENTS
+// ============================================================================
+// 1. Constants & State
+// 2. Auth
+// 3. API Helpers
+// 4. RCON / REST Console
+// 5. Container Cards & List
+// 6. Players
+// 7. Resources
+// 8. Logs & AI Analysis
+// 9. Game Data
+// 10. Config Editor
+// 11. Prospects (Icarus)
+// 12. Host Stats
+// 13. Events / SSE
+// 14. Bootstrap
+// ============================================================================
+
+// ============================================================================
+// 1. CONSTANTS & STATE
+// ============================================================================
 const serverList = document.getElementById('server-list');
 const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error');
@@ -416,7 +437,13 @@ function createRestPanel(containerId) {
   return panel;
 }
 
-// ===================== Toast notifications =====================
+// ============================================================================
+// 3. API HELPERS
+// ============================================================================
+
+// ============================================================================
+// 7. LOGS & AI ANALYSIS
+// ============================================================================
 
 function createLogsPanel(containerId) {
   const panel = document.createElement('div');
@@ -469,7 +496,7 @@ function createLogsPanel(containerId) {
       allLogs = data.logs || [];
       renderFilteredLogs();
     } catch (err) {
-      output.innerHTML = `<span class="text-red-400">Failed to load logs: ${err.message}</span>`;
+      output.innerHTML = `<span class="text-red-400">Failed to load logs: ${escapeHtml(err.message)}</span>`;
     }
   }
 
@@ -546,7 +573,9 @@ function showToast(message, type) {
   }, 4000);
 }
 
-// ===================== Container list =====================
+// ============================================================================
+// 4. CONTAINER CARDS & LIST
+// ============================================================================
 
 function renderContainerCard(container) {
   const badgeColor = statusColor(container.state);
@@ -569,8 +598,8 @@ function renderContainerCard(container) {
   card.innerHTML = `
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-xl font-semibold text-white">${container.name}</h2>
-        <span class="px-2 py-0.5 rounded text-xs font-medium text-white ${gameBadgeColor}">${gameLabel}</span>
+        <h2 class="text-xl font-semibold text-white">${escapeHtml(container.name)}</h2>
+        <span class="px-2 py-0.5 rounded text-xs font-medium text-white ${gameBadgeColor}">${escapeHtml(gameLabel)}</span>
       </div>
       <div class="flex items-center gap-2">
         <button class="start-btn px-3 py-1 text-xs font-medium rounded bg-green-700 hover:bg-green-600 text-white transition-colors ${container.state === 'running' ? 'opacity-50 cursor-not-allowed' : ''}" ${container.state === 'running' ? 'disabled' : ''}>Start</button>
@@ -581,25 +610,25 @@ function renderContainerCard(container) {
           ${game === 'terraria' ? 'Console' : 'RCON'}
         </button>
         <span class="state-badge inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white ${badgeColor}">
-          ${container.state}
+          ${escapeHtml(container.state)}
         </span>
       </div>
     </div>
     <div class="text-sm text-gray-400">
-      <span class="font-medium text-gray-300">Image:</span> ${container.image}
+      <span class="font-medium text-gray-300">Image:</span> ${escapeHtml(container.image)}
     </div>
     <div class="container-status text-sm text-gray-400">
-      <span class="font-medium text-gray-300">Status:</span> ${container.status}${container.uptime ? ' &middot; <span class="font-medium text-gray-300">Uptime:</span> ' + container.uptime : ''}${container.restart_policy ? ' &middot; <span class="font-medium text-gray-300">Restart:</span> ' + container.restart_policy : ''}${container.exit_code != null && container.state !== 'running' ? ' &middot; <span class="text-red-400">Exit: ' + container.exit_code + (container.oom_killed ? ' (OOM Killed)' : '') + '</span>' : ''}
+      <span class="font-medium text-gray-300">Status:</span> ${escapeHtml(container.status)}${container.uptime ? ' &middot; <span class="font-medium text-gray-300">Uptime:</span> ' + escapeHtml(container.uptime) : ''}${container.restart_policy ? ' &middot; <span class="font-medium text-gray-300">Restart:</span> ' + escapeHtml(container.restart_policy) : ''}${container.exit_code != null && container.state !== 'running' ? ' &middot; <span class="text-red-400">Exit: ' + escapeHtml(String(container.exit_code)) + (container.oom_killed ? ' (OOM Killed)' : '') + '</span>' : ''}
     </div>
-    ${container.health ? '<div class="text-sm text-gray-400"><span class="font-medium text-gray-300">Health:</span> <span class="' + (container.health.status === 'healthy' ? 'text-green-400' : container.health.status === 'unhealthy' ? 'text-red-400' : 'text-yellow-400') + '">' + container.health.status + '</span></div>' : ''}
+    ${container.health ? '<div class="text-sm text-gray-400"><span class="font-medium text-gray-300">Health:</span> <span class="' + (container.health.status === 'healthy' ? 'text-green-400' : container.health.status === 'unhealthy' ? 'text-red-400' : 'text-yellow-400') + '">' + escapeHtml(container.health.status) + '</span></div>' : ''}
     <div class="text-sm text-gray-400">
       <span class="font-medium text-gray-300">Ports:</span> ${formatPorts(container.ports)}
     </div>
     <div class="flex gap-2 mt-2">
-      <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-container-state="${container.state}">
+      <button class="config-btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition text-sm font-medium" data-container-id="${escapeHtml(container.id)}" data-container-name="${escapeHtml(container.name)}" data-container-state="${escapeHtml(container.state)}">
         Server Config
       </button>
-      ${(meta.gameDataTypes && meta.gameDataTypes.length > 0) ? `<button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${container.id}" data-container-name="${container.name}" data-game="${game}">Game Data</button>` : ''}
+      ${(meta.gameDataTypes && meta.gameDataTypes.length > 0) ? `<button class="gamedata-btn px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition text-sm font-medium" data-container-id="${escapeHtml(container.id)}" data-container-name="${escapeHtml(container.name)}" data-game="${escapeHtml(game)}">Game Data</button>` : ''}
       ${prospectsBtnHtml}
     </div>
     <div class="resources-container ${container.state === 'running' ? '' : 'hidden'}">
@@ -888,7 +917,9 @@ async function fetchContainers() {
   }
 }
 
-// ===================== Player List =====================
+// ============================================================================
+// 5. PLAYERS
+// ============================================================================
 
 async function fetchPlayers(containerId) {
   const container = document.querySelector(`[data-container-id="${containerId}"]`);
@@ -927,7 +958,9 @@ function fetchAllPlayers() {
   });
 }
 
-// ===================== Resource Monitor =====================
+// ============================================================================
+// 6. RESOURCES
+// ============================================================================
 
 function renderResources(containerId, resources) {
   const container = document.querySelector(`[data-container-id="${containerId}"]`);
@@ -1038,7 +1071,9 @@ function fetchAllResources() {
   });
 }
 
-// ===================== Game Data =====================
+// ============================================================================
+// 8. GAME DATA
+// ============================================================================
 
 async function loadGameData(containerId, game, el) {
   const types = (getGameMeta(game).gameDataTypes || []);
@@ -1094,7 +1129,9 @@ async function loadGameData(containerId, game, el) {
   }
 }
 
-// ===================== Config Editor =====================
+// ============================================================================
+// 9. CONFIG EDITOR
+// ============================================================================
 
 /**
  * Get a config value from the parsed config object, searching across
@@ -1533,7 +1570,7 @@ async function openConfigEditor(containerId, containerName, containerState, game
     configModalSave.disabled = false;
     configModalSave.classList.remove('opacity-50', 'cursor-not-allowed');
   } catch (err) {
-    configModalBody.innerHTML = `<div class="text-center py-8"><p class="text-red-400 text-sm">Failed to load config: ${err.message}</p></div>`;
+    configModalBody.innerHTML = `<div class="text-center py-8"><p class="text-red-400 text-sm">Failed to load config: ${escapeHtml(err.message)}</p></div>`;
   }
 }
 
@@ -1674,6 +1711,10 @@ document.addEventListener('keydown', (e) => {
     closeProspectsModal();
   }
 });
+
+// ============================================================================
+// 10. PROSPECTS (ICARUS)
+// ============================================================================
 
 // ===================== Create Prospect Modal =====================
 
@@ -1828,7 +1869,7 @@ async function openProspectsModal(containerId, containerName) {
     setupDropZone();
   } catch (err) {
     pendingProspectList = [];
-    prospectsModalBody.innerHTML = `<p class="text-red-400 text-sm">Failed to load: ${err.message}</p>`;
+    prospectsModalBody.innerHTML = `<p class="text-red-400 text-sm">Failed to load: ${escapeHtml(err.message)}</p>`;
   }
 }
 
@@ -1962,7 +2003,9 @@ prospectsModalClose.addEventListener('click', closeProspectsModal);
 prospectsModalBackdrop.addEventListener('click', closeProspectsModal);
 prospectsModalCancel.addEventListener('click', closeProspectsModal);
 
-// ===================== Auth =====================
+// ============================================================================
+// 2. AUTH
+// ============================================================================
 
 let authToken = null;
 
@@ -2065,6 +2108,10 @@ async function loadVersion() {
 }
 loadVersion();
 
+// ============================================================================
+// 11. HOST STATS
+// ============================================================================
+
 async function fetchHostStats() {
   try {
     const res = await fetch('/api/host/stats');
@@ -2109,6 +2156,10 @@ async function fetchHostStats() {
   } catch { /* ignore */ }
 }
 fetchHostStats();
+
+// ============================================================================
+// 12. EVENTS / SSE & POLLING
+// ============================================================================
 
 // Polling intervals (paused when tab hidden)
 let pollTimers = {};
