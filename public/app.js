@@ -20,6 +20,7 @@
 // ============================================================================
 // 1. CONSTANTS & STATE
 // ============================================================================
+const API_BASE = '/api/containers';
 const serverList = document.getElementById('server-list');
 const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error');
